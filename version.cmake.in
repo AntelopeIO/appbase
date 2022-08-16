@@ -5,11 +5,11 @@ execute_process(
    OUTPUT_VARIABLE VERSION_STRING
    OUTPUT_STRIP_TRAILING_WHITESPACE
    RESULT_VARIABLE res
-   WORKING_DIRECTORY @CMAKE_SOURCE_DIR@
+   WORKING_DIRECTORY "@CMAKE_SOURCE_DIR@"
 )
 if((NOT ${res} STREQUAL "0") OR ("${VERSION_STRING}" STREQUAL ""))
   message(WARNING "git describe failed. Hardcoded appbase_version_string will be set to 'unknown'.")
   set(VERSION_STRING "unknown")
 endif()
 
-configure_file(@CMAKE_CURRENT_SOURCE_DIR@/version.cpp.in @CMAKE_CURRENT_BINARY_DIR@/version.cpp @ONLY ESCAPE_QUOTES)
+configure_file("@CMAKE_CURRENT_SOURCE_DIR@/version.cpp.in" "@CMAKE_CURRENT_BINARY_DIR@/version.cpp" @ONLY ESCAPE_QUOTES)
