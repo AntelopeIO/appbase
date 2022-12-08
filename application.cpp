@@ -444,10 +444,15 @@ void application::exec() {
       boost::asio::io_service::work work(*io_serv);
       (void)work;
       bool more = true;
-      while( more || io_serv->run_one() ) {
-         while( io_serv->poll_one() ) {}
-         // execute the highest priority item
-         more = pri_queue.execute_highest();
+      while( true ) {
+         if( more ) {
+            io_serv->poll();
+         } else {
+            // if nothing available then block until there is
+            if( !io_serv->poll() && !io_serv->run_one() ) break;
+         }
+         // execute the highest priority items for 2ms
+         more = pri_queue.execute_highest_for( 2000 );
       }
 
       shutdown(); /// perform synchronous shutdown

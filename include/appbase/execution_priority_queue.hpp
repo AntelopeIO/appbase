@@ -46,6 +46,19 @@ public:
       return !handlers_.empty();
    }
 
+   bool execute_highest_for(size_t us) {
+      namespace sc = std::chrono;
+      auto end = sc::high_resolution_clock::now() + sc::microseconds(us);
+
+      while( !handlers_.empty() ) {
+         handlers_.top()->execute();
+         handlers_.pop();
+         if( sc::high_resolution_clock::now() > end ) break;
+      }
+
+      return !handlers_.empty();
+   }
+
    size_t size() { return handlers_.size(); }
 
    class executor
