@@ -273,6 +273,9 @@ namespace appbase {
 
          std::unique_ptr<class application_impl> my;
 
+         bool should_reset { false };
+         
+         static std::unique_ptr<application> app_instance;
    };
 
    application& app();
@@ -284,14 +287,14 @@ namespace appbase {
          plugin():_name(boost::core::demangle(typeid(Impl).name())){}
          virtual ~plugin(){}
 
-         virtual state get_state()const override         { return _state; }
-         virtual const std::string& name()const override { return _name; }
+         virtual state get_state()const final         { return _state; }
+         virtual const std::string& name()const final { return _name; }
 
          virtual void register_dependencies() {
             static_cast<Impl*>(this)->plugin_requires([&](auto& plug){});
          }
 
-         virtual void initialize(const variables_map& options) override {
+         virtual void initialize(const variables_map& options) final {
             if(_state == registered) {
                _state = initialized;
                static_cast<Impl*>(this)->plugin_requires([&](auto& plug){ plug.initialize(options); });
@@ -302,10 +305,10 @@ namespace appbase {
             assert(_state == initialized); /// if initial state was not registered, final state cannot be initialized
          }
 
-         virtual void handle_sighup() override {
+         virtual void handle_sighup() final {
          }
 
-         virtual void startup() override {
+         virtual void startup() final {
             if(_state == initialized) {
                _state = started;
                static_cast<Impl*>(this)->plugin_requires([&](auto& plug){ plug.startup(); });
@@ -315,7 +318,7 @@ namespace appbase {
             assert(_state == started); // if initial state was not initialized, final state cannot be started
          }
 
-         virtual void shutdown() override {
+         virtual void shutdown() final {
             if(_state == started) {
                _state = stopped;
                //ilog( "shutting down plugin ${name}", ("name",name()) );

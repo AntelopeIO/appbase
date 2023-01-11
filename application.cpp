@@ -26,8 +26,12 @@ using any_type_compare_map = std::unordered_map<std::type_index, std::function<b
 
 class application_impl {
    public:
+   
+#ifdef _WIN32
+      application_impl():_app_options("Application Options"){}
+#else
+
       application_impl():_app_options("Application Options"){
-#ifndef _WIN32
          // Create a separate thread to handle signals, so that they don't interrupt I/O.
          // stdio does not recover from EINTR.
          _signal_catching_io_ctx.emplace();
@@ -36,14 +40,18 @@ class application_impl {
             ioctx.run();
          });
 
+         // after creating the thread for handling signals, we can block signals in the current thread
          sigset_t blocked_signals;
-         sigemptyset(&blocked_signals);
-         sigaddset(&blocked_signals, SIGINT);
-         sigaddset(&blocked_signals, SIGTERM);
-         sigaddset(&blocked_signals, SIGPIPE);
-         sigaddset(&blocked_signals, SIGHUP);
+         get_target_sigset(&blocked_signals);
          pthread_sigmask(SIG_BLOCK, &blocked_signals, nullptr);
-#endif
+      }
+
+      void get_target_sigset(sigset_t *blocked_signals) {
+         sigemptyset(blocked_signals);
+         sigaddset(blocked_signals, SIGINT);
+         sigaddset(blocked_signals, SIGTERM);
+         sigaddset(blocked_signals, SIGPIPE);
+         sigaddset(blocked_signals, SIGHUP);
       }
 
       ~application_impl() {
@@ -51,7 +59,13 @@ class application_impl {
             _signal_catching_io_ctx->stop();
             _signal_catching_thread.join();
          }
+         
+         // need to unblock signals, otherwise next thread created will inherit blocked signals
+         sigset_t blocked_signals;
+         get_target_sigset(&blocked_signals);
+         pthread_sigmask(SIG_UNBLOCK, &blocked_signals, nullptr);
       }
+#endif
 
       options_description     _app_options;
       options_description     _cfg_options;
@@ -203,10 +217,17 @@ void application::start_sighup_handler( std::shared_ptr<boost::asio::signal_set>
 #endif
 }
 
+std::unique_ptr<application> application::app_instance;
+
 application& application::instance() {
-   static application _app;
-   return _app;
+   //if (__builtin_expect(!app_instance || app_instance->should_reset, 0))
+   if (app_instance && !app_instance->should_reset)
+      return *app_instance;
+   app_instance.reset(nullptr); // delete old application first
+   app_instance.reset(new application);
+   return *app_instance;
 }
+
 application& app() { return application::instance(); }
 
 void application::register_config_type_comparison(std::type_index i, config_comparison_f comp) {
@@ -453,6 +474,7 @@ void application::exec() {
       shutdown(); /// perform synchronous shutdown
    }
    io_serv.reset();
+   should_reset = true;
 }
 
 void application::write_default_config(const bfs::path& cfg_file) {
