@@ -97,6 +97,8 @@ namespace appbase {
           */
          template<typename... Plugin>
          bool                 initialize(int argc, char** argv) {
+            for (const auto& f : plugin_registrations)
+               f();
             return initialize_impl(argc, argv, {find_plugin<Plugin>()...});
          }
 
@@ -133,7 +135,7 @@ namespace appbase {
          abstract_plugin& get_plugin(const string& name)const;
 
          template<typename Plugin>
-         auto& register_plugin() {
+         auto& _register_plugin() {
             auto existing = find_plugin<Plugin>();
             if(existing)
                return *existing;
@@ -142,6 +144,13 @@ namespace appbase {
             plugins[plug->name()].reset(plug);
             plug->register_dependencies();
             return *plug;
+         }
+
+         template<typename Plugin>
+         auto& register_plugin() {
+            static int bogus = 0;
+            plugin_registrations.push_back([this]() -> void  { this->_register_plugin<Plugin>(); });
+            return bogus;
          }
 
          template<typename Plugin>
@@ -276,6 +285,7 @@ namespace appbase {
          bool should_reset { false };
          
          static std::unique_ptr<application> app_instance;
+         inline static std::vector<std::function<void ()>> plugin_registrations;
    };
 
    application& app();

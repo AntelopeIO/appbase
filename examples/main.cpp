@@ -61,11 +61,11 @@ class net_plugin : public appbase::plugin<net_plugin>
 
 };
 
+static auto& _net_plugin = appbase::app().register_plugin<net_plugin>(); 
 
-
-int main( int argc, char** argv ) {
+int test(int argc, char** argv) {
    try {
-      appbase::app().register_plugin<net_plugin>();
+      // appbase::app().register_plugin<net_plugin>();
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
       appbase::app().startup();
@@ -79,4 +79,9 @@ int main( int argc, char** argv ) {
    }
    std::cout << "exited cleanly\n";
    return 0;
+}
+
+int main( int argc, char** argv ) {
+   res = test(argc, argv);
+   return res;
 }

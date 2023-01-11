@@ -217,11 +217,10 @@ void application::start_sighup_handler( std::shared_ptr<boost::asio::signal_set>
 #endif
 }
 
-std::unique_ptr<application> application::app_instance;
+std::unique_ptr<application> application::app_instance; // static
 
 application& application::instance() {
-   //if (__builtin_expect(!app_instance || app_instance->should_reset, 0))
-   if (app_instance && !app_instance->should_reset)
+   if (__builtin_expect((app_instance && !app_instance->should_reset), 1))
       return *app_instance;
    app_instance.reset(nullptr); // delete old application first
    app_instance.reset(new application);

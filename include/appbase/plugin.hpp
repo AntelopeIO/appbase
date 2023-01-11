@@ -6,7 +6,7 @@
 #include <map>
 
 #define APPBASE_PLUGIN_REQUIRES_VISIT( r, visitor, elem ) \
-  visitor( appbase::app().register_plugin<elem>() ); 
+  visitor( appbase::app()._register_plugin<elem>() ); 
 
 #define APPBASE_PLUGIN_REQUIRES( PLUGINS )                               \
    template<typename Lambda>                                           \
