@@ -82,6 +82,6 @@ int test(int argc, char** argv) {
 }
 
 int main( int argc, char** argv ) {
-   res = test(argc, argv);
+   int res = test(argc, argv);
    return res;
 }
