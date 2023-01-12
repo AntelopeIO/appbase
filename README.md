@@ -53,7 +53,7 @@ class net_plugin : public appbase::plugin<net_plugin>
 
 int main( int argc, char** argv ) {
    try {
-      appbase::app().register_plugin<net_plugin>(); // implict registration of chain_plugin dependency
+      appbase::app().register_plugin<net_plugin>(); // implicit registration of chain_plugin dependency
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
       appbase::app().startup();
@@ -83,6 +83,9 @@ shutdown net plugin
 shutdown chain plugin
 exited cleanly
 ```
+
+
+An alternate method for registering plugins is by initializing a static variable with result of the call to `appbase::app().register_plugin<net_plugin>();`. Since this variable is not used, we recomment using the `auto` type, as shown in the `main.cpp` example.
 
 ### Boost ASIO 
 
