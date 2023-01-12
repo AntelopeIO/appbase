@@ -61,7 +61,7 @@ class net_plugin : public appbase::plugin<net_plugin>
 
 };
 
-static auto& _net_plugin = appbase::app().register_plugin<net_plugin>(); 
+static auto _net_plugin = appbase::app().register_plugin<net_plugin>(); 
 
 int test(int argc, char** argv) {
    try {

@@ -315,7 +315,7 @@ namespace appbase {
             assert(_state == initialized); /// if initial state was not registered, final state cannot be initialized
          }
 
-         virtual void handle_sighup() final {
+         virtual void handle_sighup() override {
          }
 
          virtual void startup() final {
