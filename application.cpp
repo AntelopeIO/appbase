@@ -217,8 +217,6 @@ void application::start_sighup_handler( std::shared_ptr<boost::asio::signal_set>
 #endif
 }
 
-std::unique_ptr<application> application::app_instance; // static
-
 application& application::instance() {
    if (__builtin_expect((app_instance && !app_instance->should_reset), 1))
       return *app_instance;

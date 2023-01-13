@@ -284,7 +284,7 @@ namespace appbase {
 
          bool should_reset { false };
          
-         static std::unique_ptr<application> app_instance;
+         inline static std::unique_ptr<application> app_instance;
          inline static std::vector<std::function<void ()>> plugin_registrations;
    };
 
