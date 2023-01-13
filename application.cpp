@@ -218,9 +218,8 @@ void application::start_sighup_handler( std::shared_ptr<boost::asio::signal_set>
 }
 
 application& application::instance() {
-   if (__builtin_expect((app_instance && !app_instance->should_reset), 1))
+   if (__builtin_expect(!!app_instance, 1))
       return *app_instance;
-   app_instance.reset(nullptr); // delete old application first
    app_instance.reset(new application);
    return *app_instance;
 }
@@ -471,7 +470,7 @@ void application::exec() {
       shutdown(); /// perform synchronous shutdown
    }
    io_serv.reset();
-   should_reset = true;
+   app_instance.reset(); // deleting *this... make sure it is the last thing we do.
 }
 
 void application::write_default_config(const bfs::path& cfg_file) {
