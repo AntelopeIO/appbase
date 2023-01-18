@@ -28,6 +28,11 @@ public:
       handlers_.push(std::move(handler));
    }
 
+   void clear()
+   {
+      handlers_ = prio_queue();
+   }
+   
    void execute_all()
    {
       while (!handlers_.empty()) {
@@ -161,7 +166,8 @@ private:
       }
    };
 
-   std::priority_queue<std::unique_ptr<queued_handler_base>, std::deque<std::unique_ptr<queued_handler_base>>, deref_less> handlers_;
+   using prio_queue = std::priority_queue<std::unique_ptr<queued_handler_base>, std::deque<std::unique_ptr<queued_handler_base>>, deref_less>;
+   prio_queue handlers_;
    std::size_t order_ = std::numeric_limits<size_t>::max(); // to maintain FIFO ordering in queue within priority
 };
 
