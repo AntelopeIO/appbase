@@ -61,11 +61,9 @@ class net_plugin : public appbase::plugin<net_plugin>
 
 };
 
-static auto _net_plugin = appbase::app().register_plugin<net_plugin>(); // register plugin by initializing a static variable
-
 int test(int argc, char** argv) {
    try {
-      // appbase::app().register_plugin<net_plugin>(); // alternate way of registering the plugin
+      appbase::app().register_plugin<net_plugin>(); 
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
       appbase::app().startup();

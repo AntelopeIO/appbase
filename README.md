@@ -85,7 +85,9 @@ exited cleanly
 ```
 
 
-An alternate method for registering plugins is by initializing a static variable with result of the call to `appbase::app().register_plugin<net_plugin>();`. Since this variable is not used, we recomment using the `auto` type, as shown in the `main.cpp` example.
+### Plugin registration
+
+Plugins can be registered by calling `appbase::app().register_plugin()`. When registering a plugin, all other plugins marked as being dependent via the macro `APPBASE_PLUGIN_REQUIRES()` are also registered. See `main.cpp` [example](https://github.com/AntelopeIO/appbase/blob/main/examples/main.cpp).
 
 ### Boost ASIO 
 
