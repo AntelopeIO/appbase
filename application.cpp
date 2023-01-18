@@ -46,7 +46,7 @@ class application_impl {
          pthread_sigmask(SIG_BLOCK, &blocked_signals, nullptr);
       }
 
-      void get_target_sigset(sigset_t *blocked_signals) {
+      void get_target_sigset(sigset_t* blocked_signals) {
          sigemptyset(blocked_signals);
          sigaddset(blocked_signals, SIGINT);
          sigaddset(blocked_signals, SIGTERM);
