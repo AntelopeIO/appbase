@@ -466,7 +466,7 @@ void application::exec() {
          // execute the highest priority item
          more = pri_queue.execute_highest();
       }
-      pri_queue.execute_all(); // make sure the queue is empty
+      pri_queue.clear(); // make sure the queue is empty
 
       shutdown(); /// perform synchronous shutdown
    }
