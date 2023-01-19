@@ -462,6 +462,8 @@ void application::exec() {
       (void)work;
       bool more = true;
       while( more || io_serv->run_one() ) {
+         if (my->_is_quiting)
+            break;
          while( io_serv->poll_one() ) {}
          // execute the highest priority item
          more = pri_queue.execute_highest();
