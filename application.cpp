@@ -414,12 +414,24 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
    return true;
 }
 
+void application::handle_exception(std::exception_ptr eptr, std::string_view origin) {
+   try {
+      if (eptr)
+         std::rethrow_exception(eptr);
+   } catch(const std::exception& e) {
+      std::cerr << "Caught " << origin << " exception: \"" << e.what() << "\"\n";
+   } catch(...) {
+      std::cerr << "Caught unknown " << origin << " exception.\n";
+   }
+}
+   
 void application::shutdown() {
    for(auto ritr = running_plugins.rbegin();
        ritr != running_plugins.rend(); ++ritr) {
       try {
          (*ritr)->shutdown();
       } catch(...) {
+         handle_exception(std::current_exception(), (*ritr)->name());
       }
    }
    for(auto ritr = running_plugins.rbegin();
@@ -427,11 +439,17 @@ void application::shutdown() {
       try {
          plugins.erase((*ritr)->name());
       } catch(...) {
+         std::string origin = (*ritr)->name() + " destructor";
+         handle_exception(std::current_exception(), origin);
       }
    }
-   running_plugins.clear();
-   initialized_plugins.clear();
-   plugins.clear();
+   try {
+      running_plugins.clear();
+      initialized_plugins.clear();
+      plugins.clear();
+   } catch(...) {
+      handle_exception(std::current_exception(), "plugin cleanup");
+   }
    quit();
 }
 
@@ -477,6 +495,7 @@ void application::exec() {
          } catch(...) {
             more = false;
             quit();
+            handle_exception(std::current_exception(), "application loop");
          }
       }
       pri_queue.clear(); // make sure the queue is empty

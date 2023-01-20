@@ -6,6 +6,8 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/core/demangle.hpp>
 #include <typeindex>
+#include <exception>
+#include <string_view>
 
 namespace appbase {
    namespace bpo = boost::program_options;
@@ -286,6 +288,8 @@ namespace appbase {
 
          void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
          void setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup);
+
+         void handle_exception(std::exception_ptr eptr, std::string_view origin);
    };
 
    application& app();
