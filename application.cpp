@@ -426,12 +426,15 @@ void application::handle_exception(std::exception_ptr eptr, std::string_view ori
 }
    
 void application::shutdown() {
+   std::exception_ptr eptr = nullptr;
+   
    for(auto ritr = running_plugins.rbegin();
        ritr != running_plugins.rend(); ++ritr) {
       try {
          (*ritr)->shutdown();
       } catch(...) {
-         handle_exception(std::current_exception(), (*ritr)->name());
+         eptr = std::current_exception();
+         handle_exception(eptr, (*ritr)->name());
       }
    }
    for(auto ritr = running_plugins.rbegin();
@@ -439,8 +442,9 @@ void application::shutdown() {
       try {
          plugins.erase((*ritr)->name());
       } catch(...) {
+         eptr = std::current_exception();
          std::string origin = (*ritr)->name() + " destructor";
-         handle_exception(std::current_exception(), origin);
+         handle_exception(eptr, origin);
       }
    }
    try {
@@ -448,9 +452,15 @@ void application::shutdown() {
       initialized_plugins.clear();
       plugins.clear();
    } catch(...) {
-      handle_exception(std::current_exception(), "plugin cleanup");
+      eptr = std::current_exception();
+      handle_exception(eptr, "plugin cleanup");
    }
    quit();
+
+   // if we caught an exception while shutting down a plugin, rethrow it so that main()
+   // can catch it and report the error
+   if (eptr)
+      std::rethrow_exception(eptr);
 }
 
 void application::quit() {
@@ -485,6 +495,8 @@ void application::exec() {
       boost::asio::io_service::work work(*io_serv);
       (void)work;
       bool more = true;
+      std::exception_ptr eptr = nullptr;
+      
       while( more || io_serv->run_one() ) {
          if (my->_is_quiting)
             break;
@@ -495,12 +507,17 @@ void application::exec() {
          } catch(...) {
             more = false;
             quit();
-            handle_exception(std::current_exception(), "application loop");
+            eptr = std::current_exception();
+            handle_exception(eptr, "application loop");
          }
       }
       pri_queue.clear(); // make sure the queue is empty
-
       shutdown(); /// perform synchronous shutdown
+      
+      // if we caught an exception while in the application loop, rethrow it so that main()
+      // can catch it and report the error
+      if (eptr)
+         std::rethrow_exception(eptr);
    }
    app_instance.reset(); // deleting *this... make sure it is the last thing we do.
 }
