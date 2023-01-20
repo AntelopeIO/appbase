@@ -464,15 +464,19 @@ void application::exec() {
       while( more || io_serv->run_one() ) {
          if (my->_is_quiting)
             break;
-         while( io_serv->poll_one() ) {}
-         // execute the highest priority item
-         more = pri_queue.execute_highest();
+         try {
+            while( io_serv->poll_one() ) {}
+            // execute the highest priority item
+            more = pri_queue.execute_highest();
+         } catch(...) {
+            more = false;
+            quit();
+         }
       }
       pri_queue.clear(); // make sure the queue is empty
 
       shutdown(); /// perform synchronous shutdown
    }
-   io_serv.reset();
    app_instance.reset(); // deleting *this... make sure it is the last thing we do.
 }
 

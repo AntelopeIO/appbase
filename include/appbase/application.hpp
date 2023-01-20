@@ -261,16 +261,23 @@ namespace appbase {
 
       private:
          application(); ///< private because application is a singleton that should be accessed via instance()
-         map<string, std::unique_ptr<abstract_plugin>> plugins; ///< all registered plugins
-         vector<abstract_plugin*>                  initialized_plugins; ///< stored in the order they were started running
-         vector<abstract_plugin*>                  running_plugins; ///< stored in the order they were started running
+
+         // members are ordered taking into account that the last one is destructed first
+         std::shared_ptr<boost::asio::io_service>  io_serv;
+         execution_priority_queue                  pri_queue;
 
          std::function<void()>                     sighup_callback;
          map<std::type_index, erased_method_ptr>   methods;
          map<std::type_index, erased_channel_ptr>  channels;
 
-         std::shared_ptr<boost::asio::io_service>  io_serv;
-         execution_priority_queue                  pri_queue;
+         std::unique_ptr<class application_impl>   my;
+
+         map<string, std::unique_ptr<abstract_plugin>> plugins; ///< all registered plugins
+         vector<abstract_plugin*>                  initialized_plugins; ///< stored in the order they were started running
+         vector<abstract_plugin*>                  running_plugins; ///< stored in the order they were started running
+
+         inline static std::unique_ptr<application> app_instance;
+         inline static std::vector<std::function<void ()>> plugin_registrations;
 
          void start_sighup_handler( std::shared_ptr<boost::asio::signal_set> sighup_set );
          void set_program_options();
@@ -279,11 +286,6 @@ namespace appbase {
 
          void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
          void setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup);
-
-         std::unique_ptr<class application_impl> my;
-
-         inline static std::unique_ptr<application> app_instance;
-         inline static std::vector<std::function<void ()>> plugin_registrations;
    };
 
    application& app();
