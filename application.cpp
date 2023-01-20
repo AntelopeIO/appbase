@@ -417,11 +417,17 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
 void application::shutdown() {
    for(auto ritr = running_plugins.rbegin();
        ritr != running_plugins.rend(); ++ritr) {
-      (*ritr)->shutdown();
+      try {
+         (*ritr)->shutdown();
+      } catch(...) {
+      }
    }
    for(auto ritr = running_plugins.rbegin();
        ritr != running_plugins.rend(); ++ritr) {
-      plugins.erase((*ritr)->name());
+      try {
+         plugins.erase((*ritr)->name());
+      } catch(...) {
+      }
    }
    running_plugins.clear();
    initialized_plugins.clear();
