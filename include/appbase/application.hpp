@@ -213,7 +213,7 @@ namespace appbase {
           * Do not run io_service in any other threads, as application assumes single-threaded execution in exec().
           * @return io_serivice of application
           */
-         boost::asio::io_service& get_io_service() { return *io_serv; }
+         boost::asio::io_service& get_io_service() { return io_serv; }
 
          /**
           * Post func to run on io_service with given priority.
@@ -224,7 +224,7 @@ namespace appbase {
           */
          template <typename Func>
          auto post( int priority, Func&& func ) {
-            return boost::asio::post(*io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
+            return boost::asio::post(io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
          }
 
          /**
@@ -265,7 +265,7 @@ namespace appbase {
          application(); ///< private because application is a singleton that should be accessed via instance()
 
          // members are ordered taking into account that the last one is destructed first
-         std::shared_ptr<boost::asio::io_service>  io_serv;
+         boost::asio::io_service                   io_serv;
          execution_priority_queue                  pri_queue;
 
          std::function<void()>                     sighup_callback;

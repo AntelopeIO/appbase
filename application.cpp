@@ -90,8 +90,6 @@ class application_impl {
 
 application::application()
 :my(new application_impl()){
-   io_serv = std::make_shared<boost::asio::io_service>();
-
    register_config_type<std::string>();
    register_config_type<bool>();
    register_config_type<unsigned short>();
@@ -465,7 +463,7 @@ void application::shutdown() {
 
 void application::quit() {
    my->_is_quiting = true;
-   io_serv->stop();
+   io_serv.stop();
 }
 
 bool application::is_quiting() const {
@@ -492,16 +490,16 @@ void application::set_thread_priority_max() {
 
 void application::exec() {
    {
-      boost::asio::io_service::work work(*io_serv);
+      boost::asio::io_service::work work(io_serv);
       (void)work;
       bool more = true;
       std::exception_ptr eptr = nullptr;
       
-      while( more || io_serv->run_one() ) {
+      while( more || io_serv.run_one() ) {
          if (my->_is_quiting)
             break;
          try {
-            while( io_serv->poll_one() ) {}
+            while( io_serv.poll_one() ) {}
             // execute the highest priority item
             more = pri_queue.execute_highest();
          } catch(...) {
