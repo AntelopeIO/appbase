@@ -431,8 +431,9 @@ void application::shutdown() {
       try {
          (*ritr)->shutdown();
       } catch(...) {
-         eptr = std::current_exception();
-         handle_exception(eptr, (*ritr)->name());
+         if (!eptr)
+            eptr = std::current_exception();
+         handle_exception(std::current_exception(), (*ritr)->name());
       }
    }
    for(auto ritr = running_plugins.rbegin();
@@ -440,9 +441,10 @@ void application::shutdown() {
       try {
          plugins.erase((*ritr)->name());
       } catch(...) {
-         eptr = std::current_exception();
+         if (!eptr)
+            eptr = std::current_exception();
          std::string origin = (*ritr)->name() + " destructor";
-         handle_exception(eptr, origin);
+         handle_exception(std::current_exception(), origin);
       }
    }
    try {
@@ -450,8 +452,9 @@ void application::shutdown() {
       initialized_plugins.clear();
       plugins.clear();
    } catch(...) {
-      eptr = std::current_exception();
-      handle_exception(eptr, "plugin cleanup");
+      if (!eptr)
+         eptr = std::current_exception();
+      handle_exception(std::current_exception(), "plugin cleanup");
    }
    quit();
 
@@ -489,11 +492,11 @@ void application::set_thread_priority_max() {
 }
 
 void application::exec() {
+   std::exception_ptr eptr = nullptr;
    {
       boost::asio::io_service::work work(io_serv);
       (void)work;
       bool more = true;
-      std::exception_ptr eptr = nullptr;
       
       while( more || io_serv.run_one() ) {
          if (my->_is_quiting)
@@ -509,15 +512,22 @@ void application::exec() {
             handle_exception(eptr, "application loop");
          }
       }
-      pri_queue.clear(); // make sure the queue is empty
-      shutdown(); /// perform synchronous shutdown
       
-      // if we caught an exception while in the application loop, rethrow it so that main()
-      // can catch it and report the error
-      if (eptr)
-         std::rethrow_exception(eptr);
+      try {
+         pri_queue.clear(); // make sure the queue is empty
+         shutdown();        // may rethrow exceptions
+      } catch(...) {
+         if (!eptr)
+            eptr = std::current_exception();
+      }
    }
-   app_instance.reset(); // deleting *this... make sure it is the last thing we do.
+   
+   app_instance.reset(); // deleting *this... make sure it is the last thing we do with application
+   
+   // if we caught an exception while in the application loop, rethrow it so that main()
+   // can catch it and report the error
+   if (eptr)
+      std::rethrow_exception(eptr);
 }
 
 void application::write_default_config(const bfs::path& cfg_file) {
