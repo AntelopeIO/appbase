@@ -247,7 +247,7 @@ namespace appbase {
           */
          void set_thread_priority_max();
 
-         void reset_app_singleton() { app_instance.reset(); }
+         static void reset_app_singleton() { app_instance.reset(); }
 
       protected:
          template<typename Impl>
