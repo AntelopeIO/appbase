@@ -40,10 +40,13 @@ public:
    }
    
    void plugin_startup()  { log("starting pluginA"); }
-   void plugin_shutdown() { log("shutdown pluginA"); }
+   void plugin_shutdown() { log("shutdown pluginA");  if (shutdown_counter) ++(*shutdown_counter); }
    
    uint64_t dbsize() const { return dbsize_; }
    bool     readonly() const { return readonly_; }
+   
+   void     do_throw(std::string msg) { throw std::runtime_error(msg); }
+   void     set_shutdown_counter(uint32_t &c) { shutdown_counter = &c; }
    
    void     log(std::string_view s) const {
       if (log_)
@@ -55,6 +58,7 @@ private:
    bool     replay_ {false};
    bool     log_ {false};
    uint64_t dbsize_ {0};
+   uint32_t *shutdown_counter { nullptr };
 };
 
 class pluginB : public appbase::plugin<pluginB>
@@ -79,9 +83,12 @@ public:
    }
    
    void plugin_startup()  { log("starting pluginB"); }
-   void plugin_shutdown() { log("shutdown pluginB"); }
+   void plugin_shutdown() { log("shutdown pluginB"); if (shutdown_counter) ++(*shutdown_counter); }
 
    const string& endpoint() const { return endpoint_; }
+   
+   void     do_throw(std::string msg) { throw std::runtime_error(msg); }
+   void     set_shutdown_counter(uint32_t &c) { shutdown_counter = &c; }
    
    void     log(std::string_view s) const {
       if (log_)
@@ -91,6 +98,7 @@ public:
 private:
    bool   log_ {false};
    string endpoint_;
+   uint32_t *shutdown_counter { nullptr };
 };
 
 
@@ -144,7 +152,45 @@ BOOST_AUTO_TEST_CASE(app_execution)
    app_thread.join();
 }
 
+BOOST_AUTO_TEST_CASE(exception_in_exec)
+{
+   auto& app = appbase::app();
+   
+   app.register_plugin<pluginB>();
 
+   const char *argv[] = { bu::framework::current_test_case().p_name->c_str(),
+                          "--plugin", "pluginA", "--log",
+                          "--plugin", "pluginB", "--log2" };
+   
+   BOOST_CHECK(app.initialize(sizeof(argv) / sizeof(char *), const_cast<char **>(argv)));
 
+   std::promise<std::tuple<pluginA&, pluginB&>> plugin_promise;
+   std::future<std::tuple<pluginA&, pluginB&>> plugin_fut = plugin_promise.get_future();
+   std::thread app_thread( [&]() {
+      app.startup();
+      plugin_promise.set_value( {app.get_plugin<pluginA>(), app.get_plugin<pluginB>()} );
+      try {
+         app.exec();
+      } catch(const std::exception& e ) {
+         std::cout << "exception in exec (as expected): " << e.what() << "\n";
+      }
+   } );
 
+   auto [pA, pB] = plugin_fut.get();
+   BOOST_CHECK(pA.get_state() == appbase::abstract_plugin::started);
+   BOOST_CHECK(pB.get_state() == appbase::abstract_plugin::started);
+
+   uint32_t shutdown_counter = 0;
+   pA.set_shutdown_counter(shutdown_counter);
+   pB.set_shutdown_counter(shutdown_counter);
+   
+   std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+   // this will throw an exception causing `app.exec()` to exit
+   app.post(appbase::priority::high, [&] () { pA.do_throw("throwing in pluginA"); });
+   
+   app_thread.join();
+
+   BOOST_CHECK(shutdown_counter == 2); // make sure both plugins shutdonn correctly
+}
 
