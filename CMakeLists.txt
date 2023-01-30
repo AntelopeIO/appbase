@@ -10,10 +10,10 @@ file(GLOB HEADERS "include/appbase/*.hpp")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 
-if(CMAKE_CXX_STANDARD EQUAL 98 OR CMAKE_CXX_STANDARD LESS 14)
-   message(FATAL_ERROR "appbase requires c++14 or newer")
+if(CMAKE_CXX_STANDARD EQUAL 98 OR CMAKE_CXX_STANDARD LESS 17)
+   message(FATAL_ERROR "appbase requires c++17 or newer")
 elseif(NOT CMAKE_CXX_STANDARD)
-   set(CMAKE_CXX_STANDARD 14)
+   set(CMAKE_CXX_STANDARD 17)
    set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
@@ -82,3 +82,4 @@ install( TARGETS
 )
 
 add_subdirectory( examples )
+add_subdirectory( tests )
