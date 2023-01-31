@@ -360,4 +360,17 @@ namespace appbase {
       }
    }
 
+   class scoped_app {
+   public:
+      scoped_app() : app_(app()) {}
+      ~scoped_app() { application::reset_app_singleton(); } // destroy app instance so next instance gets a clean one
+
+      // access methods
+      application*       operator->()       { return &app_; }
+      const application* operator->() const { return &app_; }
+
+   private:
+      application& app_;
+   };
+
 }

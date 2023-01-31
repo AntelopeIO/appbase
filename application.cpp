@@ -522,8 +522,6 @@ void application::exec() {
       }
    }
    
-   app_instance.reset(); // deleting *this... make sure it is the last thing we do with application
-   
    // if we caught an exception while in the application loop, rethrow it so that main()
    // can catch it and report the error
    if (eptr)
