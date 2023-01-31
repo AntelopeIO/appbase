@@ -39,7 +39,11 @@ public:
    }
    
    void plugin_startup()  { log("starting pluginA"); }
-   void plugin_shutdown() { log("shutdown pluginA");  if (shutdown_counter) ++(*shutdown_counter); }
+   void plugin_shutdown() {
+      log("shutdown pluginA");
+      if (shutdown_counter)
+         ++(*shutdown_counter);
+   }
    
    uint64_t dbsize() const { return dbsize_; }
    bool     readonly() const { return readonly_; }
@@ -71,17 +75,26 @@ public:
    virtual void set_program_options( options_description& cli, options_description& cfg ) override {
       cli.add_options()
          ("endpoint", bpo::value<string>()->default_value( "127.0.0.1:9876" ), "address and port.")
-         ("log2", "log messages" );
+         ("log2", "log messages" )
+         ("throw", "throw an exception in plugin_shutdown()" )
+         ;
    }
 
    void plugin_initialize( const variables_map& options ) {
       endpoint_ = options.at("endpoint").as<string>();
       log_      = !!options.count("log");
+      throw_    = !!options.count("throw");
       log("initialize pluginB");
    }
    
    void plugin_startup()  { log("starting pluginB"); }
-   void plugin_shutdown() { log("shutdown pluginB"); if (shutdown_counter) ++(*shutdown_counter); }
+   void plugin_shutdown() {
+      log("shutdown pluginB");
+      if (shutdown_counter)
+         ++(*shutdown_counter);
+      if (throw_)
+         do_throw("throwing in shutdown");
+   }
 
    const string& endpoint() const { return endpoint_; }
    
@@ -95,6 +108,7 @@ public:
    
 private:
    bool   log_ {false};
+   bool   throw_ {false};
    string endpoint_;
    uint32_t* shutdown_counter { nullptr };
 };
@@ -111,7 +125,7 @@ BOOST_AUTO_TEST_CASE(program_options)
 
    const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
                           "--plugin", "pluginA", "--readonly", "--replay", "--dbsize", "10000",
-                          "--plugin", "pluginB", "--endpoint", "127.0.0.1:55" };
+                          "--plugin", "pluginB", "--endpoint", "127.0.0.1:55", "--throw" };
    
    BOOST_CHECK(app->initialize(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
 
@@ -205,9 +219,9 @@ BOOST_AUTO_TEST_CASE(exception_in_exec)
 // -----------------------------------------------------------------------------
 // Here we make sure that if the app gets an exeption in the `app().exec()` loop,
 // 1. the exception is caught by the appbase framework, and logged
-// 2. all plugins are shutdown (verified with shutdown_counter
-// 3. if the first plugin to be shutdown throws an exception, the second plugin
-//    is still shutdown before the exception is rethrown.
+// 2. all plugins are shutdown (verified with shutdown_counter)
+// 3. if the first plugin to be shutdown (pluginB) throws an exception, the second
+//    plugin is still shutdown before the exception is rethrown.
 // -----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(exception_in_shutdown)
 {
@@ -217,7 +231,7 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
 
    const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
                           "--plugin", "pluginA", "--log",
-                          "--plugin", "pluginB", "--log2" };
+                          "--plugin", "pluginB", "--log2", "--throw" };
    
    BOOST_CHECK(app->initialize(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
 
