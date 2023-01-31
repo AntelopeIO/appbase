@@ -262,6 +262,7 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
    
    app_thread.join();
 
-   BOOST_CHECK(shutdown_counter == 2); // make sure both plugins shutdonn correctly
+   BOOST_CHECK(shutdown_counter == 2); // make sure both plugins shutdonn correctly,
+                                       // even though there was a throw
 }
 
