@@ -15,6 +15,11 @@ namespace appbase {
 
    using config_comparison_f = std::function<bool(const boost::any& a, const boost::any& b)>;
 
+   class application;
+   
+   application& app();
+
+
    class application
    {
       public:
@@ -149,9 +154,9 @@ namespace appbase {
          }
 
          template<typename Plugin>
-         auto& register_plugin() {
+         static auto& register_plugin() {
             static int bogus = 0;
-            plugin_registrations.push_back([this]() -> void  { this->_register_plugin<Plugin>(); });
+            plugin_registrations.push_back([]() -> void  { app()._register_plugin<Plugin>(); });
             return bogus;
          }
 
@@ -248,6 +253,7 @@ namespace appbase {
          void set_thread_priority_max();
 
          static void reset_app_singleton() { app_instance.reset(); }
+         static bool null_app_singleton() { return !app_instance; }
 
       protected:
          template<typename Impl>
@@ -293,8 +299,6 @@ namespace appbase {
 
          void handle_exception(std::exception_ptr eptr, std::string_view origin);
    };
-
-   application& app();
 
 
    template<typename Impl>
@@ -362,15 +366,18 @@ namespace appbase {
 
    class scoped_app {
    public:
-      scoped_app() : app_(app()) {}
+      explicit scoped_app()  { assert(application::null_app_singleton()); app_ = &app(); }
       ~scoped_app() { application::reset_app_singleton(); } // destroy app instance so next instance gets a clean one
 
+      scoped_app(const scoped_app&) = delete;
+      scoped_app& operator=(const scoped_app&) = delete;
+
       // access methods
-      application*       operator->()       { return &app_; }
-      const application* operator->() const { return &app_; }
+      application*       operator->()       { return app_; }
+      const application* operator->() const { return app_; }
 
    private:
-      application& app_;
+      application* app_;
    };
 
 }

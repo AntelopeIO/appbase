@@ -119,10 +119,10 @@ private:
 // -----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(program_options)
 {
+   appbase::application::register_plugin<pluginB>();
+
    appbase::scoped_app app;
    
-   app->register_plugin<pluginB>();
-
    const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
                           "--plugin", "pluginA", "--readonly", "--replay", "--dbsize", "10000",
                           "--plugin", "pluginB", "--endpoint", "127.0.0.1:55", "--throw" };
@@ -142,10 +142,10 @@ BOOST_AUTO_TEST_CASE(program_options)
 // -----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(app_execution)
 {
+   appbase::application::register_plugin<pluginB>();
+
    appbase::scoped_app app;
    
-   app->register_plugin<pluginB>();
-
    const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
                           "--plugin", "pluginA", "--log",
                           "--plugin", "pluginB", "--log2" };
@@ -176,10 +176,10 @@ BOOST_AUTO_TEST_CASE(app_execution)
 // -----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(exception_in_exec)
 {
+   appbase::application::register_plugin<pluginB>();
+
    appbase::scoped_app app;
    
-   app->register_plugin<pluginB>();
-
    const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
                           "--plugin", "pluginA", "--log",
                           "--plugin", "pluginB", "--log2" };
@@ -225,10 +225,10 @@ BOOST_AUTO_TEST_CASE(exception_in_exec)
 // -----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(exception_in_shutdown)
 {
+   appbase::application::register_plugin<pluginB>();
+
    appbase::scoped_app app;
    
-   app->register_plugin<pluginB>();
-
    const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
                           "--plugin", "pluginA", "--log",
                           "--plugin", "pluginB", "--log2", "--throw" };

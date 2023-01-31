@@ -62,12 +62,15 @@ class net_plugin : public appbase::plugin<net_plugin>
 };
 
 int test(int argc, char** argv) {
+   appbase::application::register_plugin<net_plugin>(); 
+
    try {
-      appbase::app().register_plugin<net_plugin>(); 
-      if( !appbase::app().initialize( argc, argv ) )
+      appbase::scoped_app app;
+      
+      if( !app->initialize( argc, argv ) )
          return -1;
-      appbase::app().startup();
-      appbase::app().exec();
+      app->startup();
+      app->exec();
    } catch ( const boost::exception& e ) {
       std::cerr << boost::diagnostic_information(e) << "\n";
    } catch ( const std::exception& e ) {
