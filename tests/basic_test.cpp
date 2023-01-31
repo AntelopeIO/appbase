@@ -22,8 +22,7 @@ class pluginA : public appbase::plugin<pluginA>
 public:
    APPBASE_PLUGIN_REQUIRES();
 
-   virtual void set_program_options( options_description& cli, options_description& cfg ) override
-   {
+   virtual void set_program_options( options_description& cli, options_description& cfg ) override {
       cli.add_options()
          ("readonly", "open db in read only mode")
          ("dbsize", bpo::value<uint64_t>()->default_value( 8*1024 ), "Minimum size MB of database shared memory file")
@@ -54,11 +53,11 @@ public:
    }
 
 private:
-   bool     readonly_ {false};
-   bool     replay_ {false};
-   bool     log_ {false};
-   uint64_t dbsize_ {0};
-   uint32_t *shutdown_counter { nullptr };
+   bool      readonly_ {false};
+   bool      replay_ {false};
+   bool      log_ {false};
+   uint64_t  dbsize_ {0};
+   uint32_t* shutdown_counter { nullptr };
 };
 
 class pluginB : public appbase::plugin<pluginB>
@@ -69,8 +68,7 @@ public:
 
    APPBASE_PLUGIN_REQUIRES( (pluginA) );
 
-   virtual void set_program_options( options_description& cli, options_description& cfg ) override
-   {
+   virtual void set_program_options( options_description& cli, options_description& cfg ) override {
       cli.add_options()
          ("endpoint", bpo::value<string>()->default_value( "127.0.0.1:9876" ), "address and port.")
          ("log2", "log messages" );
@@ -98,7 +96,7 @@ public:
 private:
    bool   log_ {false};
    string endpoint_;
-   uint32_t *shutdown_counter { nullptr };
+   uint32_t* shutdown_counter { nullptr };
 };
 
 
@@ -108,11 +106,11 @@ BOOST_AUTO_TEST_CASE(program_options)
    
    app.register_plugin<pluginB>();
 
-   const char *argv[] = { bu::framework::current_test_case().p_name->c_str(),
+   const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
                           "--plugin", "pluginA", "--readonly", "--replay", "--dbsize", "10000",
                           "--plugin", "pluginB", "--endpoint", "127.0.0.1:55" };
    
-   BOOST_CHECK(app.initialize(sizeof(argv) / sizeof(char *), const_cast<char **>(argv)));
+   BOOST_CHECK(app.initialize(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
 
    auto& pA = app.get_plugin<pluginA>();
    BOOST_CHECK(pA.dbsize() == 10000);
@@ -130,11 +128,11 @@ BOOST_AUTO_TEST_CASE(app_execution)
    
    app.register_plugin<pluginB>();
 
-   const char *argv[] = { bu::framework::current_test_case().p_name->c_str(),
+   const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
                           "--plugin", "pluginA", "--log",
                           "--plugin", "pluginB", "--log2" };
    
-   BOOST_CHECK(app.initialize(sizeof(argv) / sizeof(char *), const_cast<char **>(argv)));
+   BOOST_CHECK(app.initialize(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
 
    std::promise<std::tuple<pluginA&, pluginB&>> plugin_promise;
    std::future<std::tuple<pluginA&, pluginB&>> plugin_fut = plugin_promise.get_future();
