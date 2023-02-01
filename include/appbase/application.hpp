@@ -105,7 +105,7 @@ namespace appbase {
          template<typename... Plugin>
          bool                 initialize(int argc, char** argv) {
             for (const auto& f : plugin_registrations)
-               f();
+               f(*this);
             return initialize_impl(argc, argv, {find_plugin<Plugin>()...});
          }
 
@@ -156,7 +156,7 @@ namespace appbase {
          template<typename Plugin>
          static auto& register_plugin() {
             static int bogus = 0;
-            plugin_registrations.push_back([]() -> void  { app()._register_plugin<Plugin>(); });
+            plugin_registrations.push_back([](application& app) -> void  { app._register_plugin<Plugin>(); });
             return bogus;
          }
 
@@ -287,7 +287,7 @@ namespace appbase {
          vector<abstract_plugin*>                  running_plugins; ///< stored in the order they were started running
 
          inline static std::unique_ptr<application> app_instance;
-         inline static std::vector<std::function<void ()>> plugin_registrations;
+         inline static std::vector<std::function<void (application&)>> plugin_registrations;
 
          void start_sighup_handler( std::shared_ptr<boost::asio::signal_set> sighup_set );
          void set_program_options();

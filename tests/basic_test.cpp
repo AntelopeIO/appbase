@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(program_options)
                           "--plugin", "pluginA", "--readonly", "--replay", "--dbsize", "10000",
                           "--plugin", "pluginB", "--endpoint", "127.0.0.1:55", "--throw" };
    
-   BOOST_CHECK(app->initialize(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+   BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
 
    auto& pA = app->get_plugin<pluginA>();
    BOOST_CHECK(pA.dbsize() == 10000);
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(app_execution)
                           "--plugin", "pluginA", "--log",
                           "--plugin", "pluginB", "--log2" };
    
-   BOOST_CHECK(app->initialize(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+   BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
 
    std::promise<std::tuple<pluginA&, pluginB&>> plugin_promise;
    std::future<std::tuple<pluginA&, pluginB&>> plugin_fut = plugin_promise.get_future();
@@ -169,6 +169,65 @@ BOOST_AUTO_TEST_CASE(app_execution)
 }
 
 // -----------------------------------------------------------------------------
+// Check application lifetime managed by appbase::scoped_app
+// -----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(scoped_app_lifetime)
+{
+   appbase::application::register_plugin<pluginB>();
+
+   {
+      // create and run an `application` instance
+      appbase::scoped_app app;
+   
+      const char* argv[] = { bu::framework::current_test_case().p_name->c_str() };
+   
+      BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+
+      std::promise<std::tuple<pluginA&, pluginB&>> plugin_promise;
+      std::future<std::tuple<pluginA&, pluginB&>> plugin_fut = plugin_promise.get_future();
+      std::thread app_thread( [&]() {
+         app->startup();
+         plugin_promise.set_value( {app->get_plugin<pluginA>(), app->get_plugin<pluginB>()} );
+         app->exec();
+      } );
+
+      auto [pA, pB] = plugin_fut.get();
+      BOOST_CHECK(pA.get_state() == appbase::abstract_plugin::started);
+      BOOST_CHECK(pB.get_state() == appbase::abstract_plugin::started);
+
+      std::cout << "Started first application instance\n";
+      app->quit();
+      app_thread.join();
+   }
+
+   {
+      // create and run another `application` instance
+      appbase::scoped_app app;
+   
+      const char* argv[] = { bu::framework::current_test_case().p_name->c_str() };
+   
+      BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+
+      std::promise<std::tuple<pluginA&, pluginB&>> plugin_promise;
+      std::future<std::tuple<pluginA&, pluginB&>> plugin_fut = plugin_promise.get_future();
+      std::thread app_thread( [&]() {
+         app->startup();
+         plugin_promise.set_value( {app->get_plugin<pluginA>(), app->get_plugin<pluginB>()} );
+         app->exec();
+      } );
+
+      auto [pA, pB] = plugin_fut.get();
+      BOOST_CHECK(pA.get_state() == appbase::abstract_plugin::started);
+      BOOST_CHECK(pB.get_state() == appbase::abstract_plugin::started);
+
+      std::cout << "Started second application instance\n";
+      app->quit();
+      app_thread.join();
+   }
+   
+}
+
+// -----------------------------------------------------------------------------
 // Here we make sure that if the app gets an exeption in the `app().exec()` loop,
 // 1. the exception is caught by the appbase framework, and logged
 // 2. all plugins are shutdown (verified with shutdown_counter)
@@ -184,7 +243,7 @@ BOOST_AUTO_TEST_CASE(exception_in_exec)
                           "--plugin", "pluginA", "--log",
                           "--plugin", "pluginB", "--log2" };
    
-   BOOST_CHECK(app->initialize(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+   BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
 
    std::promise<std::tuple<pluginA&, pluginB&>> plugin_promise;
    std::future<std::tuple<pluginA&, pluginB&>> plugin_fut = plugin_promise.get_future();
@@ -233,7 +292,7 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
                           "--plugin", "pluginA", "--log",
                           "--plugin", "pluginB", "--log2", "--throw" };
    
-   BOOST_CHECK(app->initialize(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+   BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
 
    std::promise<std::tuple<pluginA&, pluginB&>> plugin_promise;
    std::future<std::tuple<pluginA&, pluginB&>> plugin_fut = plugin_promise.get_future();
