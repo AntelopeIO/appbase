@@ -325,3 +325,63 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
                                        // even though there was a throw
 }
 
+// -----------------------------------------------------------------------------
+// Make sure that queue is emptied when `app->quit()` is called, and that the
+// queued tasks are *not* executed
+// -----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(queue_emptied_at_quit)
+{
+   appbase::application::register_plugin<pluginB>();
+
+   appbase::scoped_app app;
+   
+   const char* argv[] = { bu::framework::current_test_case().p_name->c_str() };
+   
+   BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+
+   std::promise<std::tuple<pluginA&, pluginB&>> plugin_promise;
+   std::future<std::tuple<pluginA&, pluginB&>> plugin_fut = plugin_promise.get_future();
+   std::thread app_thread( [&]() {
+      app->startup();
+      plugin_promise.set_value( {app->get_plugin<pluginA>(), app->get_plugin<pluginB>()} );
+      try {
+         app->exec();
+      } catch(const std::exception& e ) {
+         std::cout << "exception in exec (as expected): " << e.what() << "\n";
+      }
+   } );
+
+   auto [pA, pB] = plugin_fut.get();
+   BOOST_CHECK(pA.get_state() == appbase::abstract_plugin::started);
+   BOOST_CHECK(pB.get_state() == appbase::abstract_plugin::started);
+
+   auto fib = [](uint64_t x) -> uint64_t {
+      auto fib_impl = [](uint64_t n, auto& impl) -> uint64_t {
+         return (n <= 1) ? n : impl(n - 1, impl) + impl(n - 2, impl);
+      };
+      return fib_impl(x, fib_impl);
+   };
+
+   uint32_t shutdown_counter = 0;
+   pA.set_shutdown_counter(shutdown_counter);
+   pB.set_shutdown_counter(shutdown_counter);
+   
+   uint64_t num_computed = 0, res;
+
+   // computing 100 fib(32) takes about a second on my machine... so the app->quit() should
+   // be processed while there are still plenty in the queue
+   for (uint64_t i=0; i<100; ++i)
+      app->post(appbase::priority::high, [&]() { res = fib(32); ++num_computed; });
+
+   app->quit();
+   
+   app_thread.join();
+
+   std::cout << "num_computed: " << num_computed << "\n";
+   BOOST_CHECK(num_computed < 100);
+   BOOST_CHECK(shutdown_counter == 2); // make sure both plugins shutdonn correctly,
+                                       // even though there was a throw
+}
+
+
+
