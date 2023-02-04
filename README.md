@@ -53,7 +53,7 @@ class net_plugin : public appbase::plugin<net_plugin>
 
 int main( int argc, char** argv ) {
    try {
-      appbase::app().register_plugin<net_plugin>(); // implict registration of chain_plugin dependency
+      appbase::app().register_plugin<net_plugin>(); // implicit registration of chain_plugin dependency
       if( !appbase::app().initialize( argc, argv ) )
          return -1;
       appbase::app().startup();
@@ -83,6 +83,13 @@ shutdown net plugin
 shutdown chain plugin
 exited cleanly
 ```
+
+
+### Plugin registration
+
+Plugins can be registered by calling `appbase::application::register_plugin()`. When registering a plugin, all other plugins marked as being dependent via the macro `APPBASE_PLUGIN_REQUIRES()` are also registered. See `main.cpp` [example](https://github.com/AntelopeIO/appbase/blob/main/examples/main.cpp).
+
+> Note: plugins should be initialized before `initialize()` is called.
 
 ### Boost ASIO 
 

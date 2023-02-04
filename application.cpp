@@ -26,8 +26,12 @@ using any_type_compare_map = std::unordered_map<std::type_index, std::function<b
 
 class application_impl {
    public:
+   
+#ifdef _WIN32
+      application_impl():_app_options("Application Options"){}
+#else
+
       application_impl():_app_options("Application Options"){
-#ifndef _WIN32
          // Create a separate thread to handle signals, so that they don't interrupt I/O.
          // stdio does not recover from EINTR.
          _signal_catching_io_ctx.emplace();
@@ -36,14 +40,18 @@ class application_impl {
             ioctx.run();
          });
 
+         // after creating the thread for handling signals, we can block signals in the current thread
          sigset_t blocked_signals;
-         sigemptyset(&blocked_signals);
-         sigaddset(&blocked_signals, SIGINT);
-         sigaddset(&blocked_signals, SIGTERM);
-         sigaddset(&blocked_signals, SIGPIPE);
-         sigaddset(&blocked_signals, SIGHUP);
+         get_target_sigset(&blocked_signals);
          pthread_sigmask(SIG_BLOCK, &blocked_signals, nullptr);
-#endif
+      }
+
+      void get_target_sigset(sigset_t* blocked_signals) {
+         sigemptyset(blocked_signals);
+         sigaddset(blocked_signals, SIGINT);
+         sigaddset(blocked_signals, SIGTERM);
+         sigaddset(blocked_signals, SIGPIPE);
+         sigaddset(blocked_signals, SIGHUP);
       }
 
       ~application_impl() {
@@ -51,7 +59,13 @@ class application_impl {
             _signal_catching_io_ctx->stop();
             _signal_catching_thread.join();
          }
+         
+         // need to unblock signals, otherwise next thread created will inherit blocked signals
+         sigset_t blocked_signals;
+         get_target_sigset(&blocked_signals);
+         pthread_sigmask(SIG_UNBLOCK, &blocked_signals, nullptr);
       }
+#endif
 
       options_description     _app_options;
       options_description     _cfg_options;
@@ -76,8 +90,6 @@ class application_impl {
 
 application::application()
 :my(new application_impl()){
-   io_serv = std::make_shared<boost::asio::io_service>();
-
    register_config_type<std::string>();
    register_config_type<bool>();
    register_config_type<unsigned short>();
@@ -204,9 +216,12 @@ void application::start_sighup_handler( std::shared_ptr<boost::asio::signal_set>
 }
 
 application& application::instance() {
-   static application _app;
-   return _app;
+   if (__builtin_expect(!!app_instance, 1))
+      return *app_instance;
+   app_instance.reset(new application);
+   return *app_instance;
 }
+
 application& app() { return application::instance(); }
 
 void application::register_config_type_comparison(std::type_index i, config_comparison_f comp) {
@@ -397,24 +412,61 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
    return true;
 }
 
+void application::handle_exception(std::exception_ptr eptr, std::string_view origin) {
+   try {
+      if (eptr)
+         std::rethrow_exception(eptr);
+   } catch(const std::exception& e) {
+      std::cerr << "Caught " << origin << " exception: \"" << e.what() << "\"\n";
+   } catch(...) {
+      std::cerr << "Caught unknown " << origin << " exception.\n";
+   }
+}
+   
 void application::shutdown() {
+   std::exception_ptr eptr = nullptr;
+   
    for(auto ritr = running_plugins.rbegin();
        ritr != running_plugins.rend(); ++ritr) {
-      (*ritr)->shutdown();
+      try {
+         (*ritr)->shutdown();
+      } catch(...) {
+         if (!eptr)
+            eptr = std::current_exception();
+         handle_exception(std::current_exception(), (*ritr)->name());
+      }
    }
    for(auto ritr = running_plugins.rbegin();
        ritr != running_plugins.rend(); ++ritr) {
-      plugins.erase((*ritr)->name());
+      try {
+         plugins.erase((*ritr)->name());
+      } catch(...) {
+         if (!eptr)
+            eptr = std::current_exception();
+         std::string origin = (*ritr)->name() + " destructor";
+         handle_exception(std::current_exception(), origin);
+      }
    }
-   running_plugins.clear();
-   initialized_plugins.clear();
-   plugins.clear();
+   try {
+      running_plugins.clear();
+      initialized_plugins.clear();
+      plugins.clear();
+   } catch(...) {
+      if (!eptr)
+         eptr = std::current_exception();
+      handle_exception(std::current_exception(), "plugin cleanup");
+   }
    quit();
+
+   // if we caught an exception while shutting down a plugin, rethrow it so that main()
+   // can catch it and report the error
+   if (eptr)
+      std::rethrow_exception(eptr);
 }
 
 void application::quit() {
    my->_is_quiting = true;
-   io_serv->stop();
+   io_serv.stop();
 }
 
 bool application::is_quiting() const {
@@ -440,19 +492,40 @@ void application::set_thread_priority_max() {
 }
 
 void application::exec() {
+   std::exception_ptr eptr = nullptr;
    {
-      boost::asio::io_service::work work(*io_serv);
+      boost::asio::io_service::work work(io_serv);
       (void)work;
       bool more = true;
-      while( more || io_serv->run_one() ) {
-         while( io_serv->poll_one() ) {}
-         // execute the highest priority item
-         more = pri_queue.execute_highest();
+      
+      while( more || io_serv.run_one() ) {
+         if (my->_is_quiting)
+            break;
+         try {
+            while( io_serv.poll_one() ) {}
+            // execute the highest priority item
+            more = pri_queue.execute_highest();
+         } catch(...) {
+            more = true; // so we exit the while loop without calling io_serv.run_one()
+            quit();
+            eptr = std::current_exception();
+            handle_exception(eptr, "application loop");
+         }
       }
-
-      shutdown(); /// perform synchronous shutdown
+      
+      try {
+         pri_queue.clear(); // make sure the queue is empty
+         shutdown();        // may rethrow exceptions
+      } catch(...) {
+         if (!eptr)
+            eptr = std::current_exception();
+      }
    }
-   io_serv.reset();
+   
+   // if we caught an exception while in the application loop, rethrow it so that main()
+   // can catch it and report the error
+   if (eptr)
+      std::rethrow_exception(eptr);
 }
 
 void application::write_default_config(const bfs::path& cfg_file) {

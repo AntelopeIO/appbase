@@ -6,12 +6,19 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/core/demangle.hpp>
 #include <typeindex>
+#include <exception>
+#include <string_view>
 
 namespace appbase {
    namespace bpo = boost::program_options;
    namespace bfs = boost::filesystem;
 
    using config_comparison_f = std::function<bool(const boost::any& a, const boost::any& b)>;
+
+   class application;
+   
+   application& app();
+
 
    class application
    {
@@ -97,6 +104,8 @@ namespace appbase {
           */
          template<typename... Plugin>
          bool                 initialize(int argc, char** argv) {
+            for (const auto& f : plugin_registrations)
+               f(*this);
             return initialize_impl(argc, argv, {find_plugin<Plugin>()...});
          }
 
@@ -133,7 +142,7 @@ namespace appbase {
          abstract_plugin& get_plugin(const string& name)const;
 
          template<typename Plugin>
-         auto& register_plugin() {
+         auto& _register_plugin() {
             auto existing = find_plugin<Plugin>();
             if(existing)
                return *existing;
@@ -142,6 +151,13 @@ namespace appbase {
             plugins[plug->name()].reset(plug);
             plug->register_dependencies();
             return *plug;
+         }
+
+         template<typename Plugin>
+         static auto& register_plugin() {
+            static int bogus = 0;
+            plugin_registrations.push_back([](application& app) -> void  { app._register_plugin<Plugin>(); });
+            return bogus;
          }
 
          template<typename Plugin>
@@ -202,7 +218,7 @@ namespace appbase {
           * Do not run io_service in any other threads, as application assumes single-threaded execution in exec().
           * @return io_serivice of application
           */
-         boost::asio::io_service& get_io_service() { return *io_serv; }
+         boost::asio::io_service& get_io_service() { return io_serv; }
 
          /**
           * Post func to run on io_service with given priority.
@@ -213,7 +229,7 @@ namespace appbase {
           */
          template <typename Func>
          auto post( int priority, Func&& func ) {
-            return boost::asio::post(*io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
+            return boost::asio::post(io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
          }
 
          /**
@@ -236,6 +252,9 @@ namespace appbase {
           */
          void set_thread_priority_max();
 
+         static void reset_app_singleton() { app_instance.reset(); }
+         static bool null_app_singleton() { return !app_instance; }
+
       protected:
          template<typename Impl>
          friend class plugin;
@@ -252,16 +271,23 @@ namespace appbase {
 
       private:
          application(); ///< private because application is a singleton that should be accessed via instance()
-         map<string, std::unique_ptr<abstract_plugin>> plugins; ///< all registered plugins
-         vector<abstract_plugin*>                  initialized_plugins; ///< stored in the order they were started running
-         vector<abstract_plugin*>                  running_plugins; ///< stored in the order they were started running
+
+         // members are ordered taking into account that the last one is destructed first
+         boost::asio::io_service                   io_serv;
+         execution_priority_queue                  pri_queue;
 
          std::function<void()>                     sighup_callback;
          map<std::type_index, erased_method_ptr>   methods;
          map<std::type_index, erased_channel_ptr>  channels;
 
-         std::shared_ptr<boost::asio::io_service>  io_serv;
-         execution_priority_queue                  pri_queue;
+         std::unique_ptr<class application_impl>   my;
+
+         map<string, std::unique_ptr<abstract_plugin>> plugins; ///< all registered plugins
+         vector<abstract_plugin*>                  initialized_plugins; ///< stored in the order they were started running
+         vector<abstract_plugin*>                  running_plugins; ///< stored in the order they were started running
+
+         inline static std::unique_ptr<application> app_instance;
+         inline static std::vector<std::function<void (application&)>> plugin_registrations;
 
          void start_sighup_handler( std::shared_ptr<boost::asio::signal_set> sighup_set );
          void set_program_options();
@@ -271,11 +297,8 @@ namespace appbase {
          void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
          void setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup);
 
-         std::unique_ptr<class application_impl> my;
-
+         void handle_exception(std::exception_ptr eptr, std::string_view origin);
    };
-
-   application& app();
 
 
    template<typename Impl>
@@ -284,14 +307,14 @@ namespace appbase {
          plugin():_name(boost::core::demangle(typeid(Impl).name())){}
          virtual ~plugin(){}
 
-         virtual state get_state()const override         { return _state; }
-         virtual const std::string& name()const override { return _name; }
+         virtual state get_state()const final         { return _state; }
+         virtual const std::string& name()const final { return _name; }
 
          virtual void register_dependencies() {
             static_cast<Impl*>(this)->plugin_requires([&](auto& plug){});
          }
 
-         virtual void initialize(const variables_map& options) override {
+         virtual void initialize(const variables_map& options) final {
             if(_state == registered) {
                _state = initialized;
                static_cast<Impl*>(this)->plugin_requires([&](auto& plug){ plug.initialize(options); });
@@ -305,7 +328,7 @@ namespace appbase {
          virtual void handle_sighup() override {
          }
 
-         virtual void startup() override {
+         virtual void startup() final {
             if(_state == initialized) {
                _state = started;
                static_cast<Impl*>(this)->plugin_requires([&](auto& plug){ plug.startup(); });
@@ -315,7 +338,7 @@ namespace appbase {
             assert(_state == started); // if initial state was not initialized, final state cannot be started
          }
 
-         virtual void shutdown() override {
+         virtual void shutdown() final {
             if(_state == started) {
                _state = stopped;
                //ilog( "shutting down plugin ${name}", ("name",name()) );
@@ -340,5 +363,21 @@ namespace appbase {
          });
       }
    }
+
+   class scoped_app {
+   public:
+      explicit scoped_app()  { assert(application::null_app_singleton()); app_ = &app(); }
+      ~scoped_app() { application::reset_app_singleton(); } // destroy app instance so next instance gets a clean one
+
+      scoped_app(const scoped_app&) = delete;
+      scoped_app& operator=(const scoped_app&) = delete;
+
+      // access methods
+      application*       operator->()       { return app_; }
+      const application* operator->() const { return app_; }
+
+   private:
+      application* app_;
+   };
 
 }
