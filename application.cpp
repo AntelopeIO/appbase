@@ -506,7 +506,7 @@ void application::exec() {
             // execute the highest priority item
             more = pri_queue.execute_highest();
          } catch(...) {
-            more = false;
+            more = true; // so we exit the while loop without calling io_serv.run_one()
             quit();
             eptr = std::current_exception();
             handle_exception(eptr, "application loop");
