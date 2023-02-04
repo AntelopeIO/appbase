@@ -379,7 +379,7 @@ BOOST_AUTO_TEST_CASE(queue_emptied_at_quit)
 
    std::cout << "num_computed: " << num_computed << "\n";
    BOOST_CHECK(num_computed < 100);
-   BOOST_CHECK(shutdown_counter == 2); // make sure both plugins shutdonn correctly,
+   BOOST_CHECK(shutdown_counter == 2); // make sure both plugins shutdown correctly,
 }
 
 
