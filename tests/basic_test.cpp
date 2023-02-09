@@ -257,7 +257,9 @@ BOOST_AUTO_TEST_CASE(exception_in_exec)
       }
    } );
 
-   auto [pA, pB] = plugin_fut.get();
+   pluginA pA;
+   pluginB pB;
+   std::tie(pA, pB) = plugin_fut.get();
    BOOST_CHECK(pA.get_state() == appbase::abstract_plugin::started);
    BOOST_CHECK(pB.get_state() == appbase::abstract_plugin::started);
 
@@ -306,7 +308,9 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
       }
    } );
 
-   auto [pA, pB] = plugin_fut.get();
+   pluginA pA;
+   pluginB pB;
+   std::tie(pA, pB) = plugin_fut.get();
    BOOST_CHECK(pA.get_state() == appbase::abstract_plugin::started);
    BOOST_CHECK(pB.get_state() == appbase::abstract_plugin::started);
 
