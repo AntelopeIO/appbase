@@ -257,9 +257,7 @@ BOOST_AUTO_TEST_CASE(exception_in_exec)
       }
    } );
 
-   pluginA pA;
-   pluginB pB;
-   std::tie(pA, pB) = plugin_fut.get();
+   auto [pA, pB] = plugin_fut.get();
    BOOST_CHECK(pA.get_state() == appbase::abstract_plugin::started);
    BOOST_CHECK(pB.get_state() == appbase::abstract_plugin::started);
 
@@ -270,7 +268,7 @@ BOOST_AUTO_TEST_CASE(exception_in_exec)
    std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
    // this will throw an exception causing `app->exec()` to exit
-   app->post(appbase::priority::high, [&] () { pA.do_throw("throwing in pluginA"); });
+   app->post(appbase::priority::high, [&pA=pA] () { pA.do_throw("throwing in pluginA"); });
    
    app_thread.join();
 
@@ -308,9 +306,7 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
       }
    } );
 
-   pluginA pA;
-   pluginB pB;
-   std::tie(pA, pB) = plugin_fut.get();
+   auto [pA, pB] = plugin_fut.get();
    BOOST_CHECK(pA.get_state() == appbase::abstract_plugin::started);
    BOOST_CHECK(pB.get_state() == appbase::abstract_plugin::started);
 
@@ -321,7 +317,7 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
    std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
    // this will throw an exception causing `app->exec()` to exit
-   app->post(appbase::priority::high, [&] () { pA.do_throw("throwing in pluginA"); });
+   app->post(appbase::priority::high, [&pA=pA] () { pA.do_throw("throwing in pluginA"); });
    
    app_thread.join();
 
@@ -385,6 +381,3 @@ BOOST_AUTO_TEST_CASE(queue_emptied_at_quit)
    BOOST_CHECK(num_computed < 100);
    BOOST_CHECK(shutdown_counter == 2); // make sure both plugins shutdown correctly,
 }
-
-
-
