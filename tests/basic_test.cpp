@@ -69,6 +69,8 @@ class pluginB : public appbase::plugin<pluginB>
 public:
    pluginB(){};
    ~pluginB(){};
+   pluginB(const pluginB&) = delete;
+   pluginB(pluginB&&) = delete;
 
    APPBASE_PLUGIN_REQUIRES( (pluginA) );
 
