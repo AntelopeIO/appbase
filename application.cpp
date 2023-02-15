@@ -491,43 +491,6 @@ void application::set_thread_priority_max() {
 #endif
 }
 
-void application::exec() {
-   std::exception_ptr eptr = nullptr;
-   {
-      boost::asio::io_service::work work(io_serv);
-      (void)work;
-      bool more = true;
-      
-      while( more || io_serv.run_one() ) {
-         if (my->_is_quiting)
-            break;
-         try {
-            while( io_serv.poll_one() ) {}
-            // execute the highest priority item
-            more = pri_queue.execute_highest();
-         } catch(...) {
-            more = true; // so we exit the while loop without calling io_serv.run_one()
-            quit();
-            eptr = std::current_exception();
-            handle_exception(eptr, "application loop");
-         }
-      }
-      
-      try {
-         pri_queue.clear(); // make sure the queue is empty
-         shutdown();        // may rethrow exceptions
-      } catch(...) {
-         if (!eptr)
-            eptr = std::current_exception();
-      }
-   }
-   
-   // if we caught an exception while in the application loop, rethrow it so that main()
-   // can catch it and report the error
-   if (eptr)
-      std::rethrow_exception(eptr);
-}
-
 void application::write_default_config(const bfs::path& cfg_file) {
    if(!bfs::exists(cfg_file.parent_path()))
       bfs::create_directories(cfg_file.parent_path());

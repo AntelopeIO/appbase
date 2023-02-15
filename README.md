@@ -11,7 +11,7 @@ plugins are configured, initialized, started, and shutdown in the proper order.
 - Automatically Load Dependent Plugins in Order
 - Plugins can specify commandline arguments and configuration file options
 - Program gracefully exits from SIGINT, SIGTERM, and SIGPIPE
-- Minimal Dependencies (Boost 1.60, c++14)
+- Minimal Dependencies (Boost 1.60, c++17)
 
 ## Defining a Plugin
 
@@ -109,18 +109,25 @@ Use of `get_io_service()` directly is not recommended as the priority queue will
 Because the app calls `io_service::run()` from within `application::exec()` and does not spawn any threads
 all asynchronous operations posted to the io_service should be run in the same thread.  
 
+## Multiple Priority Queues Support
+By default, AppBase maintains one internal priority queue. Users can add additional priority queues
+and manage how functions in the queues are executed. To do so, Call `multi_queue_add_queue` to add
+a new queue and get an ID to reference the queue. Then call `multi_queue_register_next_handler_func` to register a function which returns which queue's top priority function is to be executed. Use `multi_queue_exec` instead of `exec` to start execution loop. `multi_queue_empty`, `multi_queue_size`, and `multi_queue_less_than` are provided for writing a next_handler_func.
+
+See `tests/pri_queue_tests.cpp` for examples.
+
 ## Graceful Exit 
 
 To trigger a graceful exit call `appbase::app().quit()` or send SIGTERM, SIGINT, or SIGPIPE to the process.
 
 ## Dependencies 
 
-1. c++14 or newer  (clang or g++)
-2. Boost 1.60 or newer compiled with C++14 support
+1. c++17 or newer  (clang or g++)
+2. Boost 1.60 or newer compiled with C++17 support
 
-To compile boost with c++14 use:
+To compile boost with c++17 use:
 
 ```
-./b2 ...  cxxflags="-std=c++0x -stdlib=libc++" linkflags="-stdlib=libc++" ...
+./b2 ...  cxxflags="-std=c++17 -stdlib=libc++" linkflags="-stdlib=libc++" ...
 ```
 

@@ -116,7 +116,10 @@ namespace appbase {
           *  Wait until quit(), SIGINT or SIGTERM and then shutdown.
           *  Should only be executed from one thread.
           */
-         void                 exec();
+         void                 exec() {
+            exec_common<true>();
+         }
+
          void                 quit();
 
          /**
@@ -225,11 +228,12 @@ namespace appbase {
           *
           * @param priority can be appbase::priority::* constants or any int, larger ints run first
           * @param func function to run on io_service
+          * @param index index of the queue to which the func is posted
           * @return result of boost::asio::post
           */
          template <typename Func>
-         auto post( int priority, Func&& func ) {
-            return boost::asio::post(io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
+         auto post( int priority, Func&& func, int index = 0 ) {
+            return boost::asio::post(io_serv, pri_queue.wrap(priority, std::forward<Func>(func), index));
          }
 
          /**
@@ -254,6 +258,66 @@ namespace appbase {
 
          static void reset_app_singleton() { app_instance.reset(); }
          static bool null_app_singleton() { return !app_instance; }
+
+         /**
+          * @brief Add a handlers queue
+          *
+          * @return the ID (index) of the newly added queue. Use this ID for
+          * access APIs related to this queue
+          */
+         int multi_queue_add_queue() {
+            return pri_queue.multi_queue_add_queue();
+         }
+
+         /**
+          * @brief Register the function that returns a tuple indicating if there are any
+          * functions to execute, from which queue, and if there are more after current
+          * function is executed.
+          *
+          * @param func a function which returns a tuple of three components --
+          *             has_function: indicating there are functions to execute,
+          *             index: the index of the queue to pull the function,
+          *             more: more functions after current function is executed
+          */
+         void multi_queue_register_next_handler_func(std::function<std::tuple<bool, int, bool >()> func) {
+            pri_queue.multi_queue_register_next_handler_func(func);
+         }
+
+         /**
+          * @brief Execution loop on multiple queues
+          */
+         void multi_queue_exec() {
+            exec_common<false>();
+         }
+
+         /** @brief Test if a given queue is empty
+          *
+          * @param i index of the queue
+          * @return true if the queue is empty
+          */
+         bool multi_queue_empty(int i) {
+            return pri_queue.multi_queue_empty(i);
+         }
+
+         /** @brief Get size of a given queue
+          *
+          * @param i index of the queue
+          * @return size of the queue
+          */
+         int multi_queue_size(int i) {
+            return pri_queue.multi_queue_size(i);
+         }
+
+         /** @brief Compare the priorities of the top functions at two queues
+          *
+          * @param i index of the first queue
+          * @param j index of the second queue
+          * @return true if the top function's priority of the first queue is
+          *         less than the one of the second queue
+          */
+         bool multi_queue_less_than(int i, int j) {
+            return pri_queue.multi_queue_less_than(i, j);
+         }
 
       protected:
          template<typename Impl>
@@ -298,6 +362,49 @@ namespace appbase {
          void setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup);
 
          void handle_exception(std::exception_ptr eptr, std::string_view origin);
+
+         template<bool use_default_queue>
+         void exec_common() {
+            std::exception_ptr eptr = nullptr;
+            {
+               boost::asio::io_service::work work(io_serv);
+               (void)work;
+               bool more = true;
+
+               while( more || io_serv.run_one() ) {
+                  if ( is_quiting() )
+                     break;
+                  try {
+                     while( io_serv.poll_one() ) {}
+                     // execute the highest priority item
+                     if constexpr (use_default_queue ) {
+                        more = pri_queue.execute_highest();
+                     } else {
+                        more = pri_queue.multi_queue_execute_highest();
+                     }
+                  } catch(...) {
+                     more = true; // so we exit the while loop without calling io_serv.run_one()
+                     quit();
+                     eptr = std::current_exception();
+                     handle_exception(eptr, "application loop");
+                  }
+               }
+
+               try {
+                  pri_queue.clear(); // make sure the queue is empty
+                  shutdown();        // may rethrow exceptions
+               } catch(...) {
+                  if (!eptr)
+                     eptr = std::current_exception();
+               }
+            }
+
+            // if we caught an exception while in the application loop, rethrow it so that main()
+            // can catch it and report the error
+            if (eptr)
+               std::rethrow_exception(eptr);
+         }
+
    };
 
 
