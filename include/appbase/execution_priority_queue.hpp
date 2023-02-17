@@ -53,6 +53,10 @@ public:
 
    size_t size() { return handlers_.size(); }
 
+   bool empty() { return handlers_.empty(); }
+
+   int top_func_priority() { return handlers_.top()->priority(); }
+
    class executor
    {
    public:
