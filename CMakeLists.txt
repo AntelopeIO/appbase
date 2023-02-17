@@ -42,6 +42,7 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 add_library( appbase
+             application_base.cpp
              application.cpp
              ${HEADERS}
            )

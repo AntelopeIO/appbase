@@ -1,49 +1,58 @@
-#pragma once
-#include <boost/program_options.hpp>
-#include <boost/preprocessor/seq/for_each.hpp>
-#include <string>
-#include <vector>
-#include <map>
 
-#define APPBASE_PLUGIN_REQUIRES_VISIT( r, visitor, elem ) \
-  visitor( appbase::app()._register_plugin<elem>() ); 
-
-#define APPBASE_PLUGIN_REQUIRES( PLUGINS )                               \
-   template<typename Lambda>                                           \
-   void plugin_requires( Lambda&& l ) {                                \
-      BOOST_PP_SEQ_FOR_EACH( APPBASE_PLUGIN_REQUIRES_VISIT, l, PLUGINS ) \
-   }
 
 namespace appbase {
 
-   using boost::program_options::options_description;
-   using boost::program_options::variables_map;
-   using std::string;
-   using std::vector;
-   using std::map;
-
-   class application;
-   application& app();
-
-   class abstract_plugin {
+    template<typename Impl>
+   class plugin : public abstract_plugin {
       public:
-         enum state {
-            registered, ///< the plugin is constructed but doesn't do anything
-            initialized, ///< the plugin has initialized any state required but is idle
-            started, ///< the plugin is actively running
-            stopped ///< the plugin is no longer running
-         };
+         plugin():_name(boost::core::demangle(typeid(Impl).name())){}
+         virtual ~plugin(){}
 
-         virtual ~abstract_plugin(){}
-         virtual state get_state()const = 0;
-         virtual const std::string& name()const  = 0;
-         virtual void set_program_options( options_description& cli, options_description& cfg ) = 0;
-         virtual void initialize(const variables_map& options) = 0;
-         virtual void handle_sighup() = 0;
-         virtual void startup() = 0;
-         virtual void shutdown() = 0;
+         virtual state get_state()const final         { return _state; }
+         virtual const std::string& name()const final { return _name; }
+
+         virtual void register_dependencies() {
+            static_cast<Impl*>(this)->plugin_requires([&](auto& plug){});
+         }
+
+         virtual void initialize(const variables_map& options) final {
+            if(_state == registered) {
+               _state = initialized;
+               static_cast<Impl*>(this)->plugin_requires([&](auto& plug){ plug.initialize(options); });
+               static_cast<Impl*>(this)->plugin_initialize(options);
+               //ilog( "initializing plugin ${name}", ("name",name()) );
+               app().plugin_initialized(*this);
+            }
+            assert(_state == initialized); /// if initial state was not registered, final state cannot be initialized
+         }
+
+         virtual void handle_sighup() override {
+         }
+
+         virtual void startup() final {
+            if(_state == initialized) {
+               _state = started;
+               static_cast<Impl*>(this)->plugin_requires([&](auto& plug){ plug.startup(); });
+               static_cast<Impl*>(this)->plugin_startup();
+               app().plugin_started(*this);
+            }
+            assert(_state == started); // if initial state was not initialized, final state cannot be started
+         }
+
+         virtual void shutdown() final {
+            if(_state == started) {
+               _state = stopped;
+               //ilog( "shutting down plugin ${name}", ("name",name()) );
+               static_cast<Impl*>(this)->plugin_shutdown();
+            }
+         }
+
+      protected:
+         plugin(const string& name) : _name(name){}
+
+      private:
+         state _state = abstract_plugin::registered;
+         std::string _name;
    };
 
-   template<typename Impl>
-   class plugin;
 }
