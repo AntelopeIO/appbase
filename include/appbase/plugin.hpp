@@ -1,8 +1,10 @@
+#pragma once
 
+#include <appbase/abstract_plugin.hpp>
 
 namespace appbase {
 
-    template<typename Impl>
+   template<typename Impl>
    class plugin : public abstract_plugin {
       public:
          plugin():_name(boost::core::demangle(typeid(Impl).name())){}

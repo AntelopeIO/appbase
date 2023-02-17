@@ -9,6 +9,8 @@
 
 namespace appbase {
 
+   class application_base;
+
    using erased_method_ptr = std::unique_ptr<void, void(*)(void*)>;
 
    /**
@@ -287,7 +289,7 @@ namespace appbase {
             return erased_method_ptr(new method(), &deleter);
          }
 
-         friend class appbase::application;
+         friend class appbase::application_base;
    };
 
 

@@ -9,6 +9,7 @@
 #include <boost/exception/diagnostic_information.hpp>
 
 namespace appbase {
+   class application_base;
 
    using erased_channel_ptr = std::unique_ptr<void, void(*)(void*)>;
 
@@ -170,7 +171,7 @@ namespace appbase {
 
          boost::signals2::signal<void(const Data&), DispatchPolicy> _signal;
 
-         friend class appbase::application;
+         friend class appbase::application_base;
    };
 
    /**
