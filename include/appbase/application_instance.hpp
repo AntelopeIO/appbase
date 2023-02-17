@@ -2,9 +2,9 @@
 
 namespace appbase {
 
-   using executor = appbase_executor;
+   using executor_t = appbase_executor;
 
-   class application : private executor, public application_base {
+   class application : private executor_t, public application_base {
    public:
       static application&  instance() {
          if (__builtin_expect(!!app_instance, 1))
@@ -19,11 +19,11 @@ namespace appbase {
 
       template <typename Func>
       auto post( int priority, Func&& func ) {
-         return application_base::post(*static_cast<executor*>(this), priority, std::forward<Func>(func));
+         return application_base::post(*static_cast<executor_t*>(this), priority, std::forward<Func>(func));
       }
 
       void exec() {
-         application_base::exec(*static_cast<executor*>(this));
+         application_base::exec(*static_cast<executor_t*>(this));
       }
 
       void startup() {
@@ -34,6 +34,8 @@ namespace appbase {
          set_stop_executor_cb([&]() { get_io_service().stop(); });
          set_post_cb([&](int prio, std::function<void()> cb) { this->post(prio, std::move(cb)); });
       }
+
+      executor_t& executor() { return *this; }
 
   private:
       inline static std::unique_ptr<application> app_instance;      
