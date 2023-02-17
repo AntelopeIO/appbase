@@ -4,7 +4,7 @@ namespace appbase {
 
    using executor_t = appbase_executor;
 
-   class application : private executor_t, public application_base {
+   class application : public executor_t, public application_base {
    public:
       static application&  instance() {
          if (__builtin_expect(!!app_instance, 1))
