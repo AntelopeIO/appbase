@@ -271,8 +271,13 @@ namespace appbase {
          void set_thread_priority_max();
 
       void set_stop_executor_cb(std::function<void()> cb) {
-         stop_executor_cb = std::move(cb); \
+         stop_executor_cb = std::move(cb);
       }
+
+      void set_post_cb(std::function<void (int, std::function<void()>)> cb) {
+         post_cb = std::move(cb);
+      }
+
 
       protected:
          template<typename Impl>
@@ -294,6 +299,8 @@ namespace appbase {
          // members are ordered taking into account that the last one is destructed first
          std::function<void()>                     sighup_callback;
          std::function<void()>                     stop_executor_cb;
+         std::function<void (int, std::function<void()>)>  post_cb;
+
          map<std::type_index, erased_method_ptr>   methods;
          map<std::type_index, erased_channel_ptr>  channels;
 
