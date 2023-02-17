@@ -19,17 +19,11 @@ namespace appbase {
        *   boost::asio::steady_timer timer( app().get_io_service() );
        *   timer.async_wait( app().get_priority_queue().wrap(priority::low, [](){ do_something(); }) );
        */
-      auto& get_priority_queue() {
-         return pri_queue;
-      }
+      auto& get_priority_queue() { return pri_queue; }
      
-      bool execute_highest() {
-         return pri_queue.execute_highest();
-      }
+      bool execute_highest() { return pri_queue.execute_highest(); }
      
-      void clear() {
-         pri_queue.clear();
-      }
+      void clear() { pri_queue.clear(); }
 
       /**
        * Do not run io_service in any other threads, as application assumes single-threaded execution in exec().
