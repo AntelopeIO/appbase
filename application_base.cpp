@@ -201,10 +201,9 @@ void application_base::startup(boost::asio::io_service& io_serv) {
 
 void application_base::start_sighup_handler( std::shared_ptr<boost::asio::signal_set> sighup_set ) {
 #ifdef SIGHUP
-   #if 0
    sighup_set->async_wait([sighup_set, this](const boost::system::error_code& err, int /*num*/) {
       if( err ) return;
-      app().post(priority::medium, [sighup_set, this]() {
+      post_cb(priority::medium, [sighup_set, this]() {
          sighup_callback();
          for( auto plugin : initialized_plugins ) {
             if( is_quiting() ) return;
@@ -213,7 +212,6 @@ void application_base::start_sighup_handler( std::shared_ptr<boost::asio::signal
       });
       start_sighup_handler( sighup_set );
    });
-   #endif
 #endif
 }
 

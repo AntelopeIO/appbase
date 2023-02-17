@@ -9,10 +9,6 @@ namespace appbase {
 
    class application : private executor, public application_base {
    public:
-      application() {
-         set_stop_executor_cb([&]() { get_io_service().stop(); });
-      }
-
       static application&  instance();
 
       static void reset_app_singleton() { app_instance.reset(); }
@@ -30,6 +26,11 @@ namespace appbase {
 
       void startup() {
          application_base::startup(get_io_service());
+      }
+
+      application() {
+         set_stop_executor_cb([&]() { get_io_service().stop(); });
+         set_post_cb([&](int prio, std::function<void()> cb) { this->post(prio, std::move(cb)); });
       }
 
   private:
