@@ -73,7 +73,7 @@ int main( int argc, char** argv ) {
 This example can be used like follows:
 
 ```
-./examples/appbase_example --plugin net_plugin
+./examples/default_example/default_example --plugin net_plugin
 initialize chain plugin
 initialize net plugin
 starting chain plugin
