@@ -23,7 +23,6 @@ namespace appbase {
    using std::map;
 
    class application;
-   static application& app();
 
    class abstract_plugin {
       public:

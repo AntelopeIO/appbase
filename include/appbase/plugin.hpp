@@ -1,5 +1,12 @@
 #pragma once
 
+// we can remove this forward decl. later when we update tests/trx_generator/trx_generator.hpp
+// to include application.hpp instead of plugin.hpp.
+namespace appbase {
+   class application;
+   static application& app();
+}
+
 #include <appbase/abstract_plugin.hpp>
 
 namespace appbase {

@@ -1,4 +1,10 @@
 #pragma once
+
+namespace appbase {
+   class application;
+   static application& app();
+}
+
 #include <appbase/abstract_plugin.hpp>
 #include <appbase/channel.hpp>
 #include <appbase/method.hpp>
@@ -14,11 +20,6 @@ namespace appbase {
    namespace bfs = boost::filesystem;
 
    using config_comparison_f = std::function<bool(const boost::any& a, const boost::any& b)>;
-
-   class application;
-   
-   static application& app();
-
 
    class application_base
    {

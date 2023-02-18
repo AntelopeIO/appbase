@@ -1,4 +1,4 @@
-#include <appbase/application_base.hpp>
+#include <appbase/application.hpp>
 #include <appbase/version.hpp>
 
 #include <boost/algorithm/string.hpp>
