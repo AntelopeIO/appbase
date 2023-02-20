@@ -21,8 +21,6 @@ using std::map;
 using std::string;
 using std::vector;
 
-class application;
-
 class abstract_plugin {
 public:
    enum state {

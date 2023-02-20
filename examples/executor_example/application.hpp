@@ -39,7 +39,7 @@ private:
 };
 
 namespace appbase {
-   using executor_t = my_executor;
+   using application = application_t<my_executor>;
 }
 
 #include <appbase/application_instance.hpp>

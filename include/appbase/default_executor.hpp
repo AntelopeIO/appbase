@@ -46,5 +46,5 @@ private:
 };
 
 using executor_t = default_executor;
-   
+
 } // namespace appbase

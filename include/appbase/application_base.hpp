@@ -1,10 +1,5 @@
 #pragma once
 
-namespace appbase {
-class application;
-static application& app();
-} // namespace appbase
-
 #include <appbase/abstract_plugin.hpp>
 #include <appbase/channel.hpp>
 #include <appbase/method.hpp>
@@ -313,5 +308,71 @@ private:
 
    void handle_exception(std::exception_ptr eptr, std::string_view origin);
 };
+
+// ------------------------------------------------------------------------------------------
+template <class executor_t>
+class application_t : public application_base {
+public:
+   static application_t& instance() {
+      if (__builtin_expect(!!app_instance, 1))
+         return *app_instance;
+      app_instance.reset(new application_t);
+      return *app_instance;
+   }
+
+   static void reset_app_singleton() {
+      app_instance.reset();
+   }
+
+   static bool null_app_singleton() {
+      return !app_instance;
+   }
+
+   /**
+    * Post func to run on io_service with given priority.
+    *
+    * @param priority can be appbase::priority::* constants or any int, larger ints run first
+    * @param func function to run on io_service
+    * @return result of boost::asio::post
+    */
+   template <typename Func>
+   auto post(int priority, Func&& func) {
+      return executor_.post(priority, std::forward<Func>(func));
+   }
+
+   /**
+    *  Wait until quit(), SIGINT or SIGTERM and then shutdown.
+    *  Should only be executed from one thread.
+    */
+   void exec() {
+      application_base::exec(executor_);
+   }
+
+   boost::asio::io_service& get_io_service() {
+      return executor_.get_io_service();
+   }
+
+   auto& get_priority_queue() {
+      return executor_.get_priority_queue();
+   }
+
+   void startup() {
+      application_base::startup(get_io_service());
+   }
+
+   application_t() {
+      set_stop_executor_cb([&]() { get_io_service().stop(); });
+      set_post_cb([&](int prio, std::function<void()> cb) { this->post(prio, std::move(cb)); });
+   }
+
+   executor_t& executor() {
+      return executor_;
+   }
+
+private:
+   inline static std::unique_ptr<application_t> app_instance;
+   executor_t executor_;
+};
+
 
 } // namespace appbase
