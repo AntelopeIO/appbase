@@ -20,5 +20,3 @@
 #include <appbase/default_executor.hpp>
 
 #include <appbase/application_instance.hpp>
-
-
