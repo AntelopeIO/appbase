@@ -1,4 +1,4 @@
-#include <appbase/application.hpp>
+#include <appbase/application_base.hpp>
 #include <appbase/version.hpp>
 
 #include <boost/algorithm/string.hpp>
@@ -572,3 +572,12 @@ const bpo::variables_map& application_base::get_options() const{
 }
 
 } /// namespace appbase
+
+// ----------------------------------------------------------------------------------------
+// Add the following include to avoid the warning:
+//    warning: ‘appbase::application& appbase::app()’ declared ‘static’ but never defined
+//
+// and add it at the end of the file to make sure the `application` type is not used in the
+// above functions.
+// ----------------------------------------------------------------------------------------
+#include <appbase/application.hpp>
