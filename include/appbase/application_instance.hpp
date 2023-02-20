@@ -2,8 +2,8 @@
 
 namespace appbase {
 
-using executor_t = appbase_executor;
-
+// ------------------------------------------------------------------------------------------
+// This class uses the type `appbase::executor_t` which can be defined by the appbase user.
 // ------------------------------------------------------------------------------------------
 class application : public application_base {
 public:

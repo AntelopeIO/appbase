@@ -38,7 +38,9 @@ private:
    appbase::execution_priority_queue pri_queue;
 };
 
-using appbase_executor = my_executor;
+namespace appbase {
+   using executor_t = my_executor;
+}
 
 #include <appbase/application_instance.hpp>
 
