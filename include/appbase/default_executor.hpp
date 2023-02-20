@@ -45,6 +45,4 @@ private:
    execution_priority_queue pri_queue;
 };
 
-using executor_t = default_executor;
-
 } // namespace appbase
