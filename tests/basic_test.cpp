@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE(exception_in_exec)
    std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
    // this will throw an exception causing `app->exec()` to exit
-   app->post(appbase::priority::high, [&pA=pA] () { pA.do_throw("throwing in pluginA"); });
+   app->executor().post(appbase::priority::high, [&pA=pA] () { pA.do_throw("throwing in pluginA"); });
    
    app_thread.join();
 
@@ -319,7 +319,7 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
    std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
    // this will throw an exception causing `app->exec()` to exit
-   app->post(appbase::priority::high, [&pA=pA] () { pA.do_throw("throwing in pluginA"); });
+   app->executor().post(appbase::priority::high, [&pA=pA] () { pA.do_throw("throwing in pluginA"); });
    
    app_thread.join();
 
@@ -373,7 +373,7 @@ BOOST_AUTO_TEST_CASE(queue_emptied_at_quit)
    // computing 100 fib(32) takes about a second on my machine... so the app->quit() should
    // be processed while there are still plenty in the queue
    for (uint64_t i=0; i<100; ++i)
-      app->post(appbase::priority::high, [&]() { res = fib(32); ++num_computed; });
+      app->executor().post(appbase::priority::high, [&]() { res = fib(32); ++num_computed; });
 
    app->quit();
    

@@ -331,6 +331,8 @@ public:
    /**
     * Post func to run on io_service with given priority.
     *
+    * -- deprecated: use app().executor().post()
+    *
     * @param priority can be appbase::priority::* constants or any int, larger ints run first
     * @param func function to run on io_service
     * @return result of boost::asio::post
@@ -352,17 +354,13 @@ public:
       return executor_.get_io_service();
    }
 
-   auto& get_priority_queue() {
-      return executor_.get_priority_queue();
-   }
-
    void startup() {
       application_base::startup(get_io_service());
    }
 
    application_t() {
       set_stop_executor_cb([&]() { get_io_service().stop(); });
-      set_post_cb([&](int prio, std::function<void()> cb) { this->post(prio, std::move(cb)); });
+      set_post_cb([&](int prio, std::function<void()> cb) { executor_.post(prio, std::move(cb)); });
    }
 
    executor_t& executor() {
