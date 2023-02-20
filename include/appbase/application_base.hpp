@@ -3,7 +3,6 @@
 #include <appbase/abstract_plugin.hpp>
 #include <appbase/channel.hpp>
 #include <appbase/method.hpp>
-#include <appbase/execution_priority_queue.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/core/demangle.hpp>
 #include <typeindex>
@@ -15,6 +14,16 @@ namespace bpo = boost::program_options;
 namespace bfs = boost::filesystem;
 
 using config_comparison_f = std::function<bool(const boost::any& a, const boost::any& b)>;
+
+struct priority {
+   static constexpr int lowest      = std::numeric_limits<int>::min();
+   static constexpr int low         = 10;
+   static constexpr int medium_low  = 25;
+   static constexpr int medium      = 50;
+   static constexpr int medium_high = 75;
+   static constexpr int high        = 100;
+   static constexpr int highest     = std::numeric_limits<int>::max();
+};
 
 class application_base {
 public:

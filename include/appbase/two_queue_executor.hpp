@@ -1,6 +1,7 @@
 #pragma once
 
 #include <appbase/application_base.hpp>
+#include <appbase/execution_priority_queue.hpp>
 
 namespace appbase { 
 

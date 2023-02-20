@@ -16,6 +16,7 @@
 #pragma once
 
 #include <appbase/application_base.hpp>
+#include <appbase/execution_priority_queue.hpp>
 
 class my_executor {
 public:
