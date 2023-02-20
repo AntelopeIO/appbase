@@ -22,11 +22,22 @@ public:
       return !app_instance;
    }
 
+   /**
+    * Post func to run on io_service with given priority.
+    *
+    * @param priority can be appbase::priority::* constants or any int, larger ints run first
+    * @param func function to run on io_service
+    * @return result of boost::asio::post
+    */
    template <typename Func>
    auto post(int priority, Func&& func) {
-      return application_base::post(executor_, priority, std::forward<Func>(func));
+      return executor_.post(priority, std::forward<Func>(func));
    }
 
+   /**
+    *  Wait until quit(), SIGINT or SIGTERM and then shutdown.
+    *  Should only be executed from one thread.
+    */
    void exec() {
       application_base::exec(executor_);
    }

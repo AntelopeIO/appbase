@@ -249,18 +249,6 @@ public:
       }
    }
 
-   /**
-    * Post func to run on io_service with given priority.
-    *
-    * @param priority can be appbase::priority::* constants or any int, larger ints run first
-    * @param func function to run on io_service
-    * @return result of boost::asio::post
-    */
-   template <typename Executor, typename Func>
-   auto post(Executor& exec, int priority, Func&& func) {
-      return exec.post(priority, std::forward<Func>(func));
-   }
-
    const bpo::variables_map& get_options() const;
 
    /**
