@@ -37,7 +37,12 @@ BOOST_AUTO_TEST_CASE( execute_from_default_queue ) {
    app->executor().post( priority::high,   app->executor().queue2(), [&]() { rslts[7]=seq_num; ++seq_num; } );
 
    // stop application. Use lowest at the end to make sure this executes the last
-   app->executor().post( priority::lowest, app->executor().queue1(), [&]() { app->quit(); } );
+   app->executor().post( priority::lowest, app->executor().queue1(), [&]() {
+      // queue1 should have current function and queue2 should have all its functions
+      BOOST_REQUIRE_EQUAL( app->executor().queue1().size(), 1);
+      BOOST_REQUIRE_EQUAL( app->executor().queue2().size(), 3 );
+      app->quit();
+      } );
    app_thread.join();
 
    // both queues are cleared after execution 
@@ -77,7 +82,12 @@ BOOST_AUTO_TEST_CASE( execute_from_queue1 ) {
    app->executor().post( priority::high,   app->executor().queue2(), [&]() { rslts[9]=seq_num; ++seq_num; } );
 
    // stop application. Use lowest at the end to make sure this executes the last
-   app->executor().post( priority::lowest, app->executor().queue1(), [&]() { app->quit(); } );
+   app->executor().post( priority::lowest, app->executor().queue1(), [&]() {
+      // queue1 should have current function and queue2 should have all its functions
+      BOOST_REQUIRE_EQUAL( app->executor().queue1().size(), 1);
+      BOOST_REQUIRE_EQUAL( app->executor().queue2().size(), 4 );
+      app->quit();
+      } );
    app_thread.join();
 
    // both queues are cleared after execution 
@@ -87,10 +97,10 @@ BOOST_AUTO_TEST_CASE( execute_from_queue1 ) {
    // exactly number of posts processed
    BOOST_REQUIRE_EQUAL( rslts.size(), 6 );
 
-   // same priority (medidum) of functions executed by the post order
-   BOOST_CHECK_LT( rslts[0], rslts[1] );
+   // same priority (high) of functions in queue1 executed by the post order
+   BOOST_CHECK_LT( rslts[1], rslts[3] );
 
-   // higher priority posted earlier executed earlier
+   // higher priority posted earlier in queue1 executed earlier
    BOOST_CHECK_LT( rslts[3], rslts[4] );
 }
 
@@ -117,7 +127,12 @@ BOOST_AUTO_TEST_CASE( execute_from_empty_queue1 ) {
    app->executor().post( priority::high,   app->executor().queue2(), [&]() { rslts[9]=seq_num; ++seq_num; } );
 
    // Stop application. Use lowest at the end to make sure this executes the last
-   app->executor().post( priority::lowest, app->executor().queue1(), [&]() { app->quit(); } );
+   app->executor().post( priority::lowest, app->executor().queue1(), [&]() {
+      // queue1 should have current function and queue2 should have all its functions
+      BOOST_REQUIRE_EQUAL( app->executor().queue1().size(), 1);
+      BOOST_REQUIRE_EQUAL( app->executor().queue2().size(), 10 );
+      app->quit();
+      } );
    app_thread.join();
 
    // both queues are cleared after execution 
@@ -154,7 +169,12 @@ BOOST_AUTO_TEST_CASE( execute_from_both_queues ) {
    app->executor().post( priority::medium, app->executor().queue2(), [&]() { rslts[11]=seq_num; ++seq_num; } );
 
    // stop application. Use lowest at the end to make sure this executes the last
-   app->executor().post( priority::lowest, app->executor().queue1(), [&]() { app->quit(); } );
+   app->executor().post( priority::lowest, app->executor().queue1(), [&]() {
+      // queue1 should have current function and queue2's functions are all executed 
+      BOOST_REQUIRE_EQUAL( app->executor().queue1().size(), 1);
+      BOOST_REQUIRE_EQUAL( app->executor().queue2().size(), 0 );
+      app->quit();
+      } );
 
    app_thread.join();
 
