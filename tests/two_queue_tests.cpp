@@ -1,9 +1,8 @@
 #define BOOST_TEST_MODULE appbase_two_queue_executor_test
+#include "two_queue_executor.hpp"
 #include <boost/test/included/unit_test.hpp>
 #include <thread>
 #include <iostream>
-
-#include <appbase/two_queue_executor.hpp>
 
 using namespace appbase;
 
