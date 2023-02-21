@@ -1,4 +1,4 @@
-#include <appbase/application.hpp>
+#include <appbase/application_base.hpp>
 #include <appbase/version.hpp>
 
 #include <boost/algorithm/string.hpp>
@@ -88,7 +88,7 @@ class application_impl {
       std::optional<boost::asio::io_context> _signal_catching_io_ctx;
 };
 
-application::application()
+application_base::application_base()
 :my(new application_impl()){
    register_config_type<std::string>();
    register_config_type<bool>();
@@ -105,45 +105,45 @@ application::application()
    register_config_type<boost::filesystem::path>();
 }
 
-application::~application() { }
+application_base::~application_base() { }
 
-void application::set_version(uint64_t version) {
+void application_base::set_version(uint64_t version) {
   my->_version = version;
 }
 
-uint64_t application::version() const {
+uint64_t application_base::version() const {
   return my->_version;
 }
 
-string application::version_string() const {
+string application_base::version_string() const {
    return my->_version_str;
 }
 
-void application::set_version_string( std::string v ) {
+void application_base::set_version_string( std::string v ) {
    my->_version_str = std::move( v );
 }
 
-string application::full_version_string() const {
+string application_base::full_version_string() const {
    return my->_full_version_str;
 }
 
-void application::set_full_version_string( std::string v ) {
+void application_base::set_full_version_string( std::string v ) {
    my->_full_version_str = std::move( v );
 }
 
-void application::set_default_data_dir(const bfs::path& data_dir) {
+void application_base::set_default_data_dir(const bfs::path& data_dir) {
   my->_data_dir = data_dir;
 }
 
-void application::set_default_config_dir(const bfs::path& config_dir) {
+void application_base::set_default_config_dir(const bfs::path& config_dir) {
   my->_config_dir = config_dir;
 }
 
-bfs::path application::get_logging_conf() const {
+bfs::path application_base::get_logging_conf() const {
   return my->_logging_conf;
 }
 
-void application::wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss) {
+void application_base::wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss) {
    ss->async_wait([this, ss](const boost::system::error_code& ec, int) {
       if(ec)
          return;
@@ -152,7 +152,7 @@ void application::wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss) {
    });
 }
 
-void application::setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup) {
+void application_base::setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup) {
    std::shared_ptr<boost::asio::signal_set> ss = std::make_shared<boost::asio::signal_set>(ios, SIGINT, SIGTERM);
 #ifdef SIGPIPE
    ss->add(SIGPIPE);
@@ -165,7 +165,7 @@ void application::setup_signal_handling_on_ios(boost::asio::io_service& ios, boo
    wait_for_signal(ss);
 }
 
-void application::startup() {
+void application_base::startup(boost::asio::io_service& io_serv) {
    //during startup, run a second thread to catch SIGINT/SIGTERM/SIGPIPE/SIGHUP
    boost::asio::io_service startup_thread_ios;
    setup_signal_handling_on_ios(startup_thread_ios, true);
@@ -191,19 +191,19 @@ void application::startup() {
 
    //after startup, shut down the signal handling thread and catch the signals back on main io_service
    clean_up_signal_thread();
-   setup_signal_handling_on_ios(get_io_service(), false);
+   setup_signal_handling_on_ios(io_serv, false);
 
 #ifdef SIGHUP
-   std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(get_io_service(), SIGHUP));
+   std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(io_serv, SIGHUP));
    start_sighup_handler( sighup_set );
 #endif
 }
 
-void application::start_sighup_handler( std::shared_ptr<boost::asio::signal_set> sighup_set ) {
+void application_base::start_sighup_handler( std::shared_ptr<boost::asio::signal_set> sighup_set ) {
 #ifdef SIGHUP
    sighup_set->async_wait([sighup_set, this](const boost::system::error_code& err, int /*num*/) {
       if( err ) return;
-      app().post(priority::medium, [sighup_set, this]() {
+      post_cb(priority::medium, [sighup_set, this]() {
          sighup_callback();
          for( auto plugin : initialized_plugins ) {
             if( is_quiting() ) return;
@@ -215,20 +215,11 @@ void application::start_sighup_handler( std::shared_ptr<boost::asio::signal_set>
 #endif
 }
 
-application& application::instance() {
-   if (__builtin_expect(!!app_instance, 1))
-      return *app_instance;
-   app_instance.reset(new application);
-   return *app_instance;
-}
-
-application& app() { return application::instance(); }
-
-void application::register_config_type_comparison(std::type_index i, config_comparison_f comp) {
+void application_base::register_config_type_comparison(std::type_index i, config_comparison_f comp) {
    my->_any_compare_map.emplace(i, comp);
 }
 
-void application::set_program_options()
+void application_base::set_program_options()
 {
    for(auto& plug : plugins) {
       boost::program_options::options_description plugin_cli_opts("Command Line Options for " + plug.second->name());
@@ -262,7 +253,7 @@ void application::set_program_options()
    my->_app_options.add(app_cli_opts);
 }
 
-bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins) {
+bool application_base::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins) {
    set_program_options();
 
    bpo::variables_map& options = my->_options;
@@ -412,7 +403,7 @@ bool application::initialize_impl(int argc, char** argv, vector<abstract_plugin*
    return true;
 }
 
-void application::handle_exception(std::exception_ptr eptr, std::string_view origin) {
+void application_base::handle_exception(std::exception_ptr eptr, std::string_view origin) {
    try {
       if (eptr)
          std::rethrow_exception(eptr);
@@ -423,7 +414,7 @@ void application::handle_exception(std::exception_ptr eptr, std::string_view ori
    }
 }
    
-void application::shutdown() {
+void application_base::shutdown() {
    std::exception_ptr eptr = nullptr;
    
    for(auto ritr = running_plugins.rbegin();
@@ -464,16 +455,16 @@ void application::shutdown() {
       std::rethrow_exception(eptr);
 }
 
-void application::quit() {
+void application_base::quit() {
    my->_is_quiting = true;
-   io_serv.stop();
+   stop_executor_cb();
 }
 
-bool application::is_quiting() const {
+bool application_base::is_quiting() const {
    return my->_is_quiting;
 }
 
-void application::set_thread_priority_max() {
+void application_base::set_thread_priority_max() {
 #if __has_include(<pthread.h>)
    pthread_t this_thread = pthread_self();
    struct sched_param params{};
@@ -491,44 +482,7 @@ void application::set_thread_priority_max() {
 #endif
 }
 
-void application::exec() {
-   std::exception_ptr eptr = nullptr;
-   {
-      boost::asio::io_service::work work(io_serv);
-      (void)work;
-      bool more = true;
-      
-      while( more || io_serv.run_one() ) {
-         if (my->_is_quiting)
-            break;
-         try {
-            while( io_serv.poll_one() ) {}
-            // execute the highest priority item
-            more = pri_queue.execute_highest();
-         } catch(...) {
-            more = true; // so we exit the while loop without calling io_serv.run_one()
-            quit();
-            eptr = std::current_exception();
-            handle_exception(eptr, "application loop");
-         }
-      }
-      
-      try {
-         pri_queue.clear(); // make sure the queue is empty
-         shutdown();        // may rethrow exceptions
-      } catch(...) {
-         if (!eptr)
-            eptr = std::current_exception();
-      }
-   }
-   
-   // if we caught an exception while in the application loop, rethrow it so that main()
-   // can catch it and report the error
-   if (eptr)
-      std::rethrow_exception(eptr);
-}
-
-void application::write_default_config(const bfs::path& cfg_file) {
+void application_base::write_default_config(const bfs::path& cfg_file) {
    if(!bfs::exists(cfg_file.parent_path()))
       bfs::create_directories(cfg_file.parent_path());
 
@@ -537,7 +491,7 @@ void application::write_default_config(const bfs::path& cfg_file) {
    out_cfg.close();
 }
 
-void application::print_default_config(std::ostream& os) {
+void application_base::print_default_config(std::ostream& os) {
    std::map<std::string, std::string> option_to_plug;
    for(auto& plug : plugins) {
       boost::program_options::options_description plugin_cli_opts;
@@ -581,7 +535,7 @@ void application::print_default_config(std::ostream& os) {
    }
 }
 
-abstract_plugin* application::find_plugin(const string& name)const
+abstract_plugin* application_base::find_plugin(const string& name)const
 {
    auto itr = plugins.find(name);
    if(itr == plugins.end()) {
@@ -590,31 +544,40 @@ abstract_plugin* application::find_plugin(const string& name)const
    return itr->second.get();
 }
 
-abstract_plugin& application::get_plugin(const string& name)const {
+abstract_plugin& application_base::get_plugin(const string& name)const {
    auto ptr = find_plugin(name);
    if(!ptr)
       BOOST_THROW_EXCEPTION(std::runtime_error("unable to find plugin: " + name));
    return *ptr;
 }
 
-bfs::path application::data_dir() const {
+bfs::path application_base::data_dir() const {
    return my->_data_dir;
 }
 
-bfs::path application::config_dir() const {
+bfs::path application_base::config_dir() const {
    return my->_config_dir;
 }
 
-bfs::path application::full_config_file_path() const {
+bfs::path application_base::full_config_file_path() const {
    return bfs::canonical(my->_config_file_name);
 }
 
-void application::set_sighup_callback(std::function<void()> callback) {
+void application_base::set_sighup_callback(std::function<void()> callback) {
    sighup_callback = callback;
 }
 
-const bpo::variables_map& application::get_options() const{
+const bpo::variables_map& application_base::get_options() const{
       return my->_options;
 }
 
 } /// namespace appbase
+
+// ----------------------------------------------------------------------------------------
+// Add the following include to avoid the warning:
+//    warning: ‘appbase::application& appbase::app()’ declared ‘static’ but never defined
+//
+// and add it at the end of the file to make sure the `application` type is not used in the
+// above functions.
+// ----------------------------------------------------------------------------------------
+#include <appbase/application.hpp>
