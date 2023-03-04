@@ -253,7 +253,7 @@ void application_base::set_program_options()
    my->_app_options.add(app_cli_opts);
 }
 
-bool application_base::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins) {
+bool application_base::initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins, std::function<void()> initialize_logging) {
    set_program_options();
 
    bpo::variables_map& options = my->_options;
@@ -377,6 +377,10 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
       std::cerr << "         Explicit values will override future changes to application defaults. Consider commenting out or" << std::endl;
       std::cerr << "         removing these items." << std::endl;
    }
+
+   // Initialize user provided logging now so it is available during plugins' initialization
+   if (initialize_logging)
+      initialize_logging();
 
    if(options.count("plugin") > 0)
    {
