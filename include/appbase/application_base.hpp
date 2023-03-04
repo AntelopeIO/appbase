@@ -104,13 +104,14 @@ public:
     *
     * @tparam Plugin List of plugins to initalize even if not mentioned by configuration. For plugins started by
     * configuration settings or dependency resolution, this template has no effect.
+    * @param initialize_logging Function pointer that will be invoked to initialize logging
     * @return true if the application and plugins were initialized, false or exception on error
     */
    template <typename... Plugin>
-   bool initialize(int argc, char** argv) {
+   bool initialize(int argc, char** argv, std::function<void()> initialize_logging={}) {
       for (const auto& f : plugin_registrations)
          f(*this);
-      return initialize_impl(argc, argv, {find_plugin<Plugin>()...});
+      return initialize_impl(argc, argv, {find_plugin<Plugin>()...}, initialize_logging);
    }
 
    void startup(boost::asio::io_service& io_serv);
@@ -274,7 +275,7 @@ protected:
    template <typename Impl>
    friend class plugin;
 
-   bool initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins);
+   bool initialize_impl(int argc, char** argv, vector<abstract_plugin*> autostart_plugins, std::function<void()> initialize_logging);
 
    /** these notifications get called from the plugin when their state changes so that
     * the application can call shutdown in the reverse order.
