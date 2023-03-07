@@ -8,7 +8,7 @@ namespace appbase {
 class default_executor {
 public:
    template <typename Func>
-   auto post(int priority, Func&& func) {
+   auto post(default_priority priority, Func&& func) {
       return boost::asio::post(io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
    }
 
@@ -43,7 +43,7 @@ public:
 private:
    // members are ordered taking into account that the last one is destructed first
    boost::asio::io_service io_serv;
-   execution_priority_queue pri_queue;
+   execution_priority_queue<default_priority> pri_queue;
 };
 
 } // namespace appbase

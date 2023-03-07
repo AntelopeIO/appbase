@@ -62,8 +62,8 @@ private:
 };
 
 // ------------------------------------------------------------------------------------------
-template <typename Data, typename DispatchPolicy>
-void channel<Data, DispatchPolicy>::publish(int priority, const Data& data) {
+template <typename Data, typename DispatchPolicy, typename Priority>
+void channel<Data, DispatchPolicy, Priority>::publish(Priority priority, const Data& data) {
    if (has_subscribers()) {
       // this will copy data into the lambda
       app().executor().post(priority, [this, data]() { _signal(data); });

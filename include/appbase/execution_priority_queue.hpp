@@ -4,16 +4,29 @@
 #include <queue>
 
 namespace appbase {
-// adapted from: https://www.boost.org/doc/libs/1_69_0/doc/html/boost_asio/example/cpp11/invocation/prioritised_handlers.cpp
 
+struct default_priority {  
+   int priority_;
+   int order_;
+
+   default_priority(int prio) : priority_(prio), order_(0) {}
+   
+   friend bool operator<(const default_priority& a, const default_priority& b) noexcept {
+      return std::tie( a.priority_,  a.order_ ) < std::tie( b.priority_,  b.order_ );
+   }
+};
+
+// adapted from: https://www.boost.org/doc/libs/1_69_0/doc/html/boost_asio/example/cpp11/invocation/prioritised_handlers.cpp
+template<class Priority>
 class execution_priority_queue : public boost::asio::execution_context
 {
 public:
 
    template <typename Function>
-   void add(int priority, Function function)
+   void add(Priority priority, Function function)
+
    {
-      std::unique_ptr<queued_handler_base> handler(new queued_handler<Function>(priority, --order_, std::move(function)));
+      std::unique_ptr<queued_handler_base> handler(new queued_handler<Function>(priority, std::move(function)));
 
       handlers_.push(std::move(handler));
    }
@@ -44,7 +57,7 @@ public:
    class executor
    {
    public:
-      executor(execution_priority_queue& q, int p)
+      executor(execution_priority_queue& q, Priority p)
             : context_(q), priority_(p)
       {
       }
@@ -87,12 +100,12 @@ public:
 
    private:
       execution_priority_queue& context_;
-      int priority_;
+      Priority priority_;
    };
 
    template <typename Function>
    boost::asio::executor_binder<Function, executor>
-   wrap(int priority, Function&& func)
+   wrap(Priority priority, Function&& func)
    {
       return boost::asio::bind_executor( executor(*this, priority), std::forward<Function>(func) );
    }
@@ -101,9 +114,8 @@ private:
    class queued_handler_base
    {
    public:
-      queued_handler_base( int p, size_t order )
+      queued_handler_base( Priority p )
             : priority_( p )
-            , order_( order )
       {
       }
 
@@ -111,27 +123,26 @@ private:
 
       virtual void execute() = 0;
 
-      int priority() const { return priority_; }
+      Priority priority() const { return priority_; }
       // C++20
       // friend std::weak_ordering operator<=>(const queued_handler_base&,
       //                                       const queued_handler_base&) noexcept = default;
       friend bool operator<(const queued_handler_base& a,
                             const queued_handler_base& b) noexcept
       {
-         return std::tie( a.priority_, a.order_ ) < std::tie( b.priority_, b.order_ );
+         return a.priority_ < b.priority_;
       }
 
    private:
-      int priority_;
-      size_t order_;
+      Priority priority_;
    };
 
    template <typename Function>
    class queued_handler : public queued_handler_base
    {
    public:
-      queued_handler(int p, size_t order, Function f)
-            : queued_handler_base( p, order )
+      queued_handler(Priority p, Function f)
+            : queued_handler_base( p )
             , function_( std::move(f) )
       {
       }
@@ -156,7 +167,6 @@ private:
 
    using prio_queue = std::priority_queue<std::unique_ptr<queued_handler_base>, std::deque<std::unique_ptr<queued_handler_base>>, deref_less>;
    prio_queue handlers_;
-   std::size_t order_ = std::numeric_limits<size_t>::max(); // to maintain FIFO ordering in queue within priority
 };
 
 } // appbase

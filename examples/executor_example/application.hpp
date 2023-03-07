@@ -21,7 +21,7 @@
 class my_executor {
 public:
    template <typename Func>
-   auto post( int priority, Func&& func ) {
+   auto post( appbase::default_priority priority, Func&& func ) {
       return boost::asio::post(io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
    }
 
@@ -36,11 +36,11 @@ public:
 private:
    // members are ordered taking into account that the last one is destructed first
    boost::asio::io_service  io_serv;
-   appbase::execution_priority_queue pri_queue;
+   appbase::execution_priority_queue<appbase::default_priority> pri_queue;
 };
 
 namespace appbase {
-   using application = application_t<my_executor>;
+   using application = application_t<my_executor, appbase::default_priority>;
 }
 
 #include <appbase/application_instance.hpp>

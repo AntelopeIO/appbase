@@ -44,7 +44,7 @@ namespace appbase {
     *
     * @tparam Data - the type of data to publish
     */
-   template<typename Data, typename DispatchPolicy>
+   template<typename Data, typename DispatchPolicy, typename Priority>
    class channel final {
       public:
          /**
@@ -98,7 +98,7 @@ namespace appbase {
           * @param priority - the priority to use for post
           * @param data - the data to publish
           */
-         void publish(int priority, const Data& data);
+         void publish(Priority priority, const Data& data);
 
          /**
           * subscribe to data on a channel
@@ -180,9 +180,9 @@ namespace appbase {
     * @tparam Data - the typ of the Data the channel carries
     * @tparam DispatchPolicy - The dispatch policy to use for this channel (defaults to @ref drop_exceptions)
     */
-   template< typename Tag, typename Data, typename DispatchPolicy = drop_exceptions >
+   template< typename Tag, typename Data, typename Priority, typename DispatchPolicy = drop_exceptions >
    struct channel_decl {
-      using channel_type = channel<Data, DispatchPolicy>;
+      using channel_type = channel<Data, DispatchPolicy, Priority>;
       using tag_type = Tag;
    };
 

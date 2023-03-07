@@ -16,7 +16,7 @@
 #include <appbase/default_executor.hpp>
 
 namespace appbase {
-using application = application_t<default_executor>;
+using application = application_t<default_executor, default_priority>;
 }
 
 #include <appbase/application_instance.hpp>

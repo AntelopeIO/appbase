@@ -320,7 +320,7 @@ private:
 };
 
 // ------------------------------------------------------------------------------------------
-template <class executor_t>
+template <class executor_t, class priority_t>
 class application_t : public application_base {
 public:
    static application_t& instance() {
@@ -348,7 +348,7 @@ public:
     * @return result of boost::asio::post
     */
    template <typename Func>
-   auto post(int priority, Func&& func) {
+   auto post(priority_t priority, Func&& func) {
       return executor_.post(priority, std::forward<Func>(func));
    }
 
@@ -370,7 +370,7 @@ public:
 
    application_t() {
       set_stop_executor_cb([&]() { get_io_service().stop(); });
-      set_post_cb([&](int prio, std::function<void()> cb) { executor_.post(prio, std::move(cb)); });
+      set_post_cb([&](priority_t prio, std::function<void()> cb) { executor_.post(prio, std::move(cb)); });
    }
 
    executor_t& executor() {
