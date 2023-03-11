@@ -47,6 +47,12 @@ public:
 
    const auto& top() const { return handlers_.top(); }
 
+   auto pop() {
+      auto t = std::move(const_cast<std::unique_ptr<queued_handler_base>&>(handlers_.top()));
+      handlers_.pop();
+      return t;
+   }
+
    class executor
    {
    public:
