@@ -399,6 +399,12 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
             plugin->initialize(options);
 
       bpo::notify(options);
+   } catch ( const boost::exception& e ) {
+      std::cerr << boost::diagnostic_information(e) << "\n";
+      return false;
+   } catch ( const std::exception& e ) {
+      std::cerr << e.what() << "\n";
+      return false;
    } catch (...) {
       std::cerr << "Failed to initialize\n";
       return false;
