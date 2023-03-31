@@ -393,20 +393,26 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
             get_plugin(name).initialize(options);
       }
    }
+   
+   std::string plugin_name;
+   auto error_header = [&]() { return std::string("appbase: exception thrown during plugin \"") + plugin_name + "\" initialization.\n"; };
+   
    try {
       for (auto plugin : autostart_plugins)
-         if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered)
+         if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered) {
+            plugin_name = plugin->name();
             plugin->initialize(options);
+         }
 
       bpo::notify(options);
    } catch ( const boost::exception& e ) {
-      std::cerr << boost::diagnostic_information(e) << "\n";
+      std::cerr << error_header() << boost::diagnostic_information(e) << "\n";
       return false;
    } catch ( const std::exception& e ) {
-      std::cerr << e.what() << "\n";
+      std::cerr << error_header() << e.what() << "\n";
       return false;
    } catch (...) {
-      std::cerr << "Failed to initialize\n";
+      std::cerr << error_header();
       return false;
    }
 
