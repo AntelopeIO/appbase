@@ -21,7 +21,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 
-find_package(Boost 1.60 REQUIRED COMPONENTS program_options)
+find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
 
 if( APPLE )
   # Apple Specific Options Here
