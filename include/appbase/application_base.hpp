@@ -133,7 +133,7 @@ public:
             if (is_quiting())
                break;
             try {
-               while (io_serv.poll_one()) {}
+               io_serv.poll(); // queue up any ready; allowing high priority item to get into the queue
                // execute the highest priority item
                more = exec.execute_highest();
             } catch (...) {
@@ -359,6 +359,11 @@ public:
       application_base::exec(executor_);
    }
 
+   /**
+    * Anything posted directly on this io_service is run at the highest of priority as it by-passes the
+    * priority queue and is run immediately in exec(). Use with care and consider using app().executor().post() instead.
+    * @return
+    */
    boost::asio::io_service& get_io_service() {
       return executor_.get_io_service();
    }
