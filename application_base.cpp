@@ -382,24 +382,22 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
    if (initialize_logging)
       initialize_logging();
 
+   if(options.count("plugin") > 0)
+   {
+      auto plugins = options.at("plugin").as<std::vector<std::string>>();
+      for(auto& arg : plugins)
+      {
+         vector<string> names;
+         boost::split(names, arg, boost::is_any_of(" \t,"));
+         for(const std::string& name : names)
+            get_plugin(name).initialize(options);
+      }
+   }
+   
    std::string plugin_name;
    auto error_header = [&]() { return std::string("appbase: exception thrown during plugin \"") + plugin_name + "\" initialization.\n"; };
    
    try {
-      if(options.count("plugin") > 0)
-      {
-         auto plugins = options.at("plugin").as<std::vector<std::string>>();
-         for(auto& arg : plugins)
-         {
-            vector<string> names;
-            boost::split(names, arg, boost::is_any_of(" \t,"));
-            for(const std::string& name : names) {
-               plugin_name = name;
-               get_plugin(name).initialize(options);
-            }
-         }
-      }
-   
       for (auto plugin : autostart_plugins)
          if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered) {
             plugin_name = plugin->name();
