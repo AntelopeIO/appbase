@@ -315,7 +315,7 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
    my->_logging_conf = logconf;
    if(workaround != "logging.json" && !std::filesystem::exists(my->_logging_conf)) {
       // when logconf is explicitly specified, we must ensure the file exists
-      cout << "Logging configuration file " << my->_logging_conf << " missing." << std::endl;
+      std::cerr << "Logging configuration file " << my->_logging_conf << " missing." << std::endl;
       return false;
    }
 
@@ -327,7 +327,7 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
    if(!std::filesystem::exists(my->_config_file_name)) {
       if(my->_config_file_name.compare(my->_config_dir / "config.ini") != 0)
       {
-         cout << "Config file " << my->_config_file_name << " missing." << std::endl;
+         std::cerr << "Config file " << my->_config_file_name << " missing." << std::endl;
          return false;
       }
       write_default_config(my->_config_file_name);
