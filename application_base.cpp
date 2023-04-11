@@ -246,7 +246,8 @@ void application_base::set_program_options()
          ("data-dir,d", bpo::value<std::string>(), "Directory containing program runtime data")
          ("config-dir", bpo::value<std::string>(), "Directory containing configuration files such as config.ini")
          ("config,c", bpo::value<std::string>()->default_value( "config.ini" ), "Configuration file name relative to config-dir")
-         ("logconf,l", bpo::value<std::string>()->default_value( "logging.json" ), "Logging configuration file name/path for library users");
+         ("logconf,l", bpo::value<std::string>()->default_value( "logging.json" ),
+            "Logging configuration file name/path for library users (absolute path or relative to application config dir)");
 
    my->_cfg_options.add(app_cfg_opts);
    my->_app_options.add(app_cfg_opts);
@@ -312,6 +313,11 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
    if( logconf.is_relative() )
       logconf = my->_config_dir / logconf;
    my->_logging_conf = logconf;
+   if(workaround != "logging.json" && !std::filesystem::exists(my->_logging_conf)) {
+      // when logconf is explicitly specified, we must ensure the file exists
+      cout << "Logging configuration file " << my->_logging_conf << " missing." << std::endl;
+      return false;
+   }
 
    workaround = options["config"].as<std::string>();
    my->_config_file_name = workaround;
@@ -393,10 +399,10 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
             get_plugin(name).initialize(options);
       }
    }
-   
+
    std::string plugin_name;
    auto error_header = [&]() { return std::string("appbase: exception thrown during plugin \"") + plugin_name + "\" initialization.\n"; };
-   
+
    try {
       for (auto plugin : autostart_plugins)
          if (plugin != nullptr && plugin->get_state() == abstract_plugin::registered) {
