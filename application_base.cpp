@@ -2,7 +2,6 @@
 #include <appbase/version.hpp>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/algorithm/string.hpp>
 
