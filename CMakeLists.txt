@@ -48,7 +48,7 @@ add_library( appbase
              ${HEADERS}
            )
 
-target_link_libraries( appbase Boost::asio Boost::signals2 Boost::program_options Boost::unit_test_framework Threads::Threads)
+target_link_libraries( appbase Boost::asio Boost::signals2 Boost::program_options Boost::unit_test_framework Boost::signals2 Threads::Threads)
 
 target_include_directories( appbase
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
