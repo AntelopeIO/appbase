@@ -1,6 +1,6 @@
 # Defines AppBase library target.
-project( AppBase )
 cmake_minimum_required( VERSION 3.5 )
+project( AppBase )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
@@ -21,7 +21,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 
-find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
+find_package(Boost 1.67 REQUIRED COMPONENTS program_options system)
 
 if( APPLE )
   # Apple Specific Options Here
@@ -46,7 +46,12 @@ add_library( appbase
              ${HEADERS}
            )
 
-target_link_libraries( appbase Boost::program_options Threads::Threads)
+target_link_libraries( appbase PUBLIC Boost::program_options Boost::system Threads::Threads)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    target_link_libraries( appbase PUBLIC stdc++fs )
+  endif()
+endif()
 
 target_include_directories( appbase
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -82,4 +87,5 @@ install( TARGETS
 )
 
 add_subdirectory( examples )
+enable_testing()
 add_subdirectory( tests )
