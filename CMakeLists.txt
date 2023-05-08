@@ -21,7 +21,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 
-if(NOT boost_headers_SOURCE_DIR)
+if(NOT TARGET Boost::program_options)
    find_package(Boost 1.67 REQUIRED COMPONENTS program_options)
 endif()
 
