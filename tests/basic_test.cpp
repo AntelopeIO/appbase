@@ -27,6 +27,7 @@ public:
          ("readonly", "open db in read only mode")
          ("dbsize", bpo::value<uint64_t>()->default_value( 8*1024 ), "Minimum size MB of database shared memory file")
          ("replay", "clear db and replay all blocks" )
+         ("throw_during_startup", "throw an exception in plugin_startup()" )
          ("log", "log messages" );
    }
 
@@ -34,11 +35,17 @@ public:
       readonly_ = !!options.count("readonly");
       replay_   = !!options.count("replay");
       log_      = !!options.count("log");
+      throw_during_startup_ = !!options.count("throw_during_startup");
       dbsize_   = options.at("dbsize").as<uint64_t>();
       log("initialize pluginA");
    }
    
-   void plugin_startup()  { log("starting pluginA"); }
+   void plugin_startup()  {
+      log("starting pluginA");
+      if (throw_during_startup_)
+         do_throw("throwing as requested");
+   }
+   
    void plugin_shutdown() {
       log("shutdown pluginA");
       if (shutdown_counter)
@@ -48,7 +55,7 @@ public:
    uint64_t dbsize() const { return dbsize_; }
    bool     readonly() const { return readonly_; }
    
-   void     do_throw(std::string msg) { throw std::runtime_error(msg); }
+   void     do_throw(const std::string& msg) { throw std::runtime_error(msg); }
    void     set_shutdown_counter(uint32_t &c) { shutdown_counter = &c; }
    
    void     log(std::string_view s) const {
@@ -59,6 +66,7 @@ public:
 private:
    bool      readonly_ {false};
    bool      replay_ {false};
+   bool      throw_during_startup_ {false};
    bool      log_ {false};
    uint64_t  dbsize_ {0};
    uint32_t* shutdown_counter { nullptr };
@@ -326,6 +334,40 @@ BOOST_AUTO_TEST_CASE(exception_in_shutdown)
    BOOST_CHECK(shutdown_counter == 2); // make sure both plugins shutdonn correctly,
                                        // even though there was a throw
 }
+
+// -----------------------------------------------------------------------------
+// Here we make sure that if a plugin throws during `plugin_startup()`
+// 1. the exception is caught by the appbase framework, and logged
+// 2. all plugins are shutdown (verified with shutdown_counter)
+// -----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(exception_in_startup)
+{
+   appbase::application::register_plugin<pluginB>();
+
+   appbase::scoped_app app;
+
+   const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
+                          "--plugin", "pluginA", "--log", "--throw_during_startup",
+                          "--plugin", "pluginB", "--log2" };
+
+   BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+
+   std::thread app_thread( [&]() {
+      auto& pA = app->get_plugin<pluginA>();
+      uint32_t shutdown_counter(0);
+      pA.set_shutdown_counter(shutdown_counter);
+
+      try {
+         app->startup();
+      } catch(const std::exception& e ) {
+         std::cout << "exception during startup (as expected): " << e.what() << "\n";
+      }
+      BOOST_CHECK(shutdown_counter == 1); // check that plugin_shutdown() was executed for pA
+   } );
+
+   app_thread.join();
+}
+
 
 // -----------------------------------------------------------------------------
 // Make sure that queue is emptied when `app->quit()` is called, and that the

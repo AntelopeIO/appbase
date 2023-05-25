@@ -28,7 +28,7 @@ public:
          static_cast<Impl*>(this)->plugin_requires([&](auto& plug) { plug.initialize(options); });
          static_cast<Impl*>(this)->plugin_initialize(options);
          // ilog( "initializing plugin ${name}", ("name",name()) );
-         app().plugin_initialized(*this);
+         app().plugin_initialized(this);
       }
       assert(_state == initialized); /// if initial state was not registered, final state cannot be initialized
    }
@@ -39,8 +39,8 @@ public:
       if (_state == initialized) {
          _state = started;
          static_cast<Impl*>(this)->plugin_requires([&](auto& plug) { plug.startup(); });
+         app().plugin_started(this); // add to `running_plugins` before so it will be shutdown if we throw in `plugin_startup()`
          static_cast<Impl*>(this)->plugin_startup();
-         app().plugin_started(*this);
       }
       assert(_state == started); // if initial state was not initialized, final state cannot be started
    }
