@@ -397,6 +397,7 @@ BOOST_AUTO_TEST_CASE(quit_in_startup)
       try {
          app->startup();
       } catch(const std::exception& e ) {
+         // appbase framework will throw an exception if app.quit() is called during startup
          std::cout << "exception during startup (as expected): " << e.what() << "\n";
       }
       BOOST_CHECK(shutdown_counter == 1); // check that plugin_shutdown() was executed for pA
@@ -424,11 +425,7 @@ BOOST_AUTO_TEST_CASE(queue_emptied_at_quit)
    std::thread app_thread( [&]() {
       app->startup();
       plugin_promise.set_value( {app->get_plugin<pluginA>(), app->get_plugin<pluginB>()} );
-      try {
-         app->exec();
-      } catch(const std::exception& e ) {
-         std::cout << "exception in exec (as expected): " << e.what() << "\n";
-      }
+      app->exec();
    } );
 
    auto [pA, pB] = plugin_fut.get();
