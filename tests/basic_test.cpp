@@ -28,6 +28,7 @@ public:
          ("dbsize", bpo::value<uint64_t>()->default_value( 8*1024 ), "Minimum size MB of database shared memory file")
          ("replay", "clear db and replay all blocks" )
          ("throw_during_startup", "throw an exception in plugin_startup()" )
+         ("quit_during_startup", "calls app().quit() plugin_startup()" )
          ("log", "log messages" );
    }
 
@@ -36,6 +37,7 @@ public:
       replay_   = !!options.count("replay");
       log_      = !!options.count("log");
       throw_during_startup_ = !!options.count("throw_during_startup");
+      quit_during_startup_ = !!options.count("quit_during_startup");
       dbsize_   = options.at("dbsize").as<uint64_t>();
       log("initialize pluginA");
    }
@@ -44,6 +46,8 @@ public:
       log("starting pluginA");
       if (throw_during_startup_)
          do_throw("throwing as requested");
+      if (quit_during_startup_)
+         appbase::app().quit();
    }
    
    void plugin_shutdown() {
@@ -67,6 +71,7 @@ private:
    bool      readonly_ {false};
    bool      replay_ {false};
    bool      throw_during_startup_ {false};
+   bool      quit_during_startup_ {false};
    bool      log_ {false};
    uint64_t  dbsize_ {0};
    uint32_t* shutdown_counter { nullptr };
@@ -368,6 +373,38 @@ BOOST_AUTO_TEST_CASE(exception_in_startup)
    app_thread.join();
 }
 
+// -----------------------------------------------------------------------------
+// Here we make sure that if a plugin calls app().quit() during `plugin_startup()`
+// plugin_shutdown is called for that plugin
+// -----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(quit_in_startup)
+{
+   appbase::application::register_plugin<pluginB>();
+
+   appbase::scoped_app app;
+
+   const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
+                          "--plugin", "pluginA", "--log", "--quit_during_startup",
+                          "--plugin", "pluginB", "--log2" };
+
+   BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+
+   std::thread app_thread( [&]() {
+      auto& pA = app->get_plugin<pluginA>();
+      uint32_t shutdown_counter(0);
+      pA.set_shutdown_counter(shutdown_counter);
+
+      try {
+         app->startup();
+      } catch(const std::exception& e ) {
+         // appbase framework will throw an exception if app.quit() is called during startup
+         std::cout << "exception during startup (as expected): " << e.what() << "\n";
+      }
+      BOOST_CHECK(shutdown_counter == 1); // check that plugin_shutdown() was executed for pA
+   } );
+
+   app_thread.join();
+}
 
 // -----------------------------------------------------------------------------
 // Make sure that queue is emptied when `app->quit()` is called, and that the
@@ -388,11 +425,7 @@ BOOST_AUTO_TEST_CASE(queue_emptied_at_quit)
    std::thread app_thread( [&]() {
       app->startup();
       plugin_promise.set_value( {app->get_plugin<pluginA>(), app->get_plugin<pluginB>()} );
-      try {
-         app->exec();
-      } catch(const std::exception& e ) {
-         std::cout << "exception in exec (as expected): " << e.what() << "\n";
-      }
+      app->exec();
    } );
 
    auto [pA, pB] = plugin_fut.get();
