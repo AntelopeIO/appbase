@@ -31,11 +31,11 @@ public:
      
    void clear() { pri_queue.clear(); }
 
-   boost::asio::io_service& get_io_service() { return io_serv; }
+   boost::asio::io_context& get_io_context() { return io_serv; }
 
 private:
    // members are ordered taking into account that the last one is destructed first
-   boost::asio::io_service  io_serv;
+   boost::asio::io_context  io_serv;
    appbase::execution_priority_queue pri_queue;
    std::size_t order = std::numeric_limits<size_t>::max(); // to maintain FIFO ordering in queue within priority
 };

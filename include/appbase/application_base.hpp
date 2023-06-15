@@ -113,7 +113,7 @@ public:
       return initialize_impl(argc, argv, {find_plugin<Plugin>()...}, initialize_logging);
    }
 
-   void startup(boost::asio::io_service& io_serv);
+   void startup(boost::asio::io_context& io_serv);
    void shutdown();
 
    /**
@@ -124,8 +124,8 @@ public:
    void exec(Executor& exec) {
       std::exception_ptr eptr = nullptr;
       {
-         auto& io_serv{exec.get_io_service()};
-         boost::asio::io_service::work work(io_serv);
+         auto& io_serv{exec.get_io_context()};
+         boost::asio::executor_work_guard<decltype(io_serv.get_executor())> work{io_serv.get_executor()};
          (void)work;
          bool more = true;
 
@@ -313,7 +313,7 @@ private:
    void print_default_config(std::ostream& os);
 
    void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
-   void setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup);
+   void setup_signal_handling_on_ios(boost::asio::io_context& ios, bool startup);
 
    void handle_exception(std::exception_ptr eptr, std::string_view origin);
 };
@@ -338,12 +338,12 @@ public:
    }
 
    /**
-    * Post func to run on io_service with given priority.
+    * Post func to run on io_context with given priority.
     *
     * -- deprecated: use app().executor().post()
     *
     * @param priority can be appbase::priority::* constants or any int, larger ints run first
-    * @param func function to run on io_service
+    * @param func function to run on io_context
     * @return result of boost::asio::post
     */
    template <typename Func>
@@ -360,20 +360,20 @@ public:
    }
 
    /**
-    * Anything posted directly on this io_service is run at the highest of priority as it by-passes the
+    * Anything posted directly on this io_context is run at the highest of priority as it by-passes the
     * priority queue and is run immediately in exec(). Use with care and consider using app().executor().post() instead.
     * @return
     */
-   boost::asio::io_service& get_io_service() {
-      return executor_.get_io_service();
+   boost::asio::io_context& get_io_context() {
+      return executor_.get_io_context();
    }
 
    void startup() {
-      application_base::startup(get_io_service());
+      application_base::startup(get_io_context());
    }
 
    application_t() {
-      set_stop_executor_cb([&]() { get_io_service().stop(); });
+      set_stop_executor_cb([&]() { get_io_context().stop(); });
       set_post_cb([&](int prio, std::function<void()> cb) { executor_.post(prio, std::move(cb)); });
    }
 
