@@ -22,7 +22,7 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 
 if(NOT TARGET Boost::program_options)
-   find_package(Boost 1.67 REQUIRED COMPONENTS program_options system)
+   find_package(Boost 1.67 REQUIRED COMPONENTS asio signals2 program_options unit_test_framework signals2 system)
 endif()
 
 if( APPLE )
