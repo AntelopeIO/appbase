@@ -22,7 +22,7 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 
 if(NOT TARGET Boost::program_options)
-   find_package(Boost 1.67 REQUIRED COMPONENTS asio signals2 program_options unit_test_framework signals2 system)
+   find_package(Boost 1.67 REQUIRED COMPONENTS program_options system)
 endif()
 
 if( APPLE )
@@ -48,7 +48,7 @@ add_library( appbase
              ${HEADERS}
            )
 
-target_link_libraries( appbase PUBLIC Boost::asio Boost::signals2 Boost::program_options Boost::unit_test_framework
+target_link_libraries( appbase PUBLIC Boost::asio Boost::program_options Boost::unit_test_framework
                                       Boost::signals2 Boost::system Threads::Threads)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
