@@ -48,8 +48,12 @@ add_library( appbase
              ${HEADERS}
            )
 
-target_link_libraries( appbase PUBLIC Boost::asio Boost::program_options Boost::unit_test_framework
-                                      Boost::signals2 Boost::system Threads::Threads)
+target_link_libraries( appbase PUBLIC Boost::program_options Boost::system Threads::Threads)
+
+if(TARGET Boost::asio)
+   target_link_libraries( appbase PUBLIC Boost::asio Boost::unit_test_framework Boost::signals2 )
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
     target_link_libraries( appbase PUBLIC stdc++fs )
