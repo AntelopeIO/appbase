@@ -374,6 +374,42 @@ BOOST_AUTO_TEST_CASE(exception_in_startup)
 }
 
 // -----------------------------------------------------------------------------
+// Here we make sure that if a plugin calls app().quit() during `plugin_startup()`,
+// it doesn't interrupt the startup process for other plugins
+// `producer_plugin` can do this and some tests like `terminate-scenarios-test-hard_replay`
+// rely on other plugins getting initialized.
+// -----------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(quit_in_startup)
+{
+   appbase::application::register_plugin<pluginB>();
+
+   appbase::scoped_app app;
+
+   const char* argv[] = { bu::framework::current_test_case().p_name->c_str(),
+                          "--plugin", "pluginA", "--log", "--quit_during_startup",
+                          "--plugin", "pluginB", "--log2" };
+
+   BOOST_CHECK(app->initialize<pluginB>(sizeof(argv) / sizeof(char*), const_cast<char**>(argv)));
+
+   std::thread app_thread( [&]() {
+      auto& pA = app->get_plugin<pluginA>();
+      uint32_t shutdown_counter(0);
+      pA.set_shutdown_counter(shutdown_counter);
+
+      try {
+         app->startup();
+      } catch(const std::exception& e ) {
+         // appbase framework should *not* throw an exception if app.quit() is called during startup
+         BOOST_CHECK(false);
+         std::cout << "exception during startup: " << e.what() << "\n";
+      }
+      BOOST_CHECK(shutdown_counter == 0); // check that plugin_shutdown() was not executed for pA
+   } );
+
+   app_thread.join();
+}
+
+// -----------------------------------------------------------------------------
 // Make sure that queue is emptied when `app->quit()` is called, and that the
 // queued tasks are *not* executed
 // -----------------------------------------------------------------------------
