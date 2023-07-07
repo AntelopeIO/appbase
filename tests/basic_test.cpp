@@ -403,7 +403,7 @@ BOOST_AUTO_TEST_CASE(quit_in_startup)
          BOOST_CHECK(false);
          std::cout << "exception during startup: " << e.what() << "\n";
       }
-      BOOST_CHECK(shutdown_counter == 0); // check that plugin_shutdown() was executed for pA
+      BOOST_CHECK(shutdown_counter == 0); // check that plugin_shutdown() was not executed for pA
    } );
 
    app_thread.join();
