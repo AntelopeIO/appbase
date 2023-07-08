@@ -374,8 +374,10 @@ BOOST_AUTO_TEST_CASE(exception_in_startup)
 }
 
 // -----------------------------------------------------------------------------
-// Here we make sure that if a plugin calls app().quit() during `plugin_startup()`
-// plugin_shutdown is called for that plugin
+// Here we make sure that if a plugin calls app().quit() during `plugin_startup()`,
+// it doesn't interrupt the startup process for other plugins
+// `producer_plugin` can do this and some tests like `terminate-scenarios-test-hard_replay`
+// rely on other plugins getting initialized.
 // -----------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(quit_in_startup)
 {
@@ -397,10 +399,11 @@ BOOST_AUTO_TEST_CASE(quit_in_startup)
       try {
          app->startup();
       } catch(const std::exception& e ) {
-         // appbase framework will throw an exception if app.quit() is called during startup
-         std::cout << "exception during startup (as expected): " << e.what() << "\n";
+         // appbase framework should *not* throw an exception if app.quit() is called during startup
+         BOOST_CHECK(false);
+         std::cout << "exception during startup: " << e.what() << "\n";
       }
-      BOOST_CHECK(shutdown_counter == 1); // check that plugin_shutdown() was executed for pA
+      BOOST_CHECK(shutdown_counter == 0); // check that plugin_shutdown() was not executed for pA
    } );
 
    app_thread.join();

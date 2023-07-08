@@ -41,11 +41,8 @@ public:
          static_cast<Impl*>(this)->plugin_requires([&](auto& plug) { plug.startup(); });
          app().plugin_started(this); // add to `running_plugins` before so it will be shutdown if we throw in `plugin_startup()`
          static_cast<Impl*>(this)->plugin_startup();
-         if (app().is_quiting()) {
-            // some plugins, instead of throwing an exception when failing to start, call app().quit().
-            // throw exception to ensure no more plugin gets initialized, and all running plugins receive `plugin_shutdown()`
-            throw std::runtime_error("plugin " + name() + " quit during startup");
-         }
+         // some plugins (such as producer_plugin) may call `app().quit()` during startup (see `producer_plugin_impl::start_block()`.
+         // this is not cause for immediate termination.
       }
       assert(_state == started); // if initial state was not initialized, final state cannot be started
    }
