@@ -4,6 +4,7 @@
 #include <appbase/channel.hpp>
 #include <appbase/method.hpp>
 #include <boost/core/demangle.hpp>
+#include <boost/program_options/option.hpp>
 #include <typeindex>
 #include <exception>
 #include <string_view>
@@ -254,6 +255,7 @@ public:
    }
 
    const bpo::variables_map& get_options() const;
+   const std::vector<bpo::basic_option<char>>& get_parsed_options() const;
 
    /**
     * Set the current thread schedule priority to maximum.

@@ -69,6 +69,7 @@ class application_impl {
       options_description     _app_options;
       options_description     _cfg_options;
       variables_map           _options;
+      std::vector<bpo::basic_option<char>> _parsed_options;
 
       std::filesystem::path   _data_dir{"data-dir"};
       std::filesystem::path   _config_dir{"config-dir"};
@@ -259,6 +260,7 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
    bpo::variables_map& options = my->_options;
    try {
       bpo::parsed_options parsed = bpo::command_line_parser(argc, argv).options(my->_app_options).run();
+      my->_parsed_options = parsed.options;
       bpo::store(parsed, options);
       vector<string> positionals = bpo::collect_unrecognized(parsed.options, bpo::include_positional);
       if(!positionals.empty())
@@ -335,6 +337,8 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
    std::vector< bpo::basic_option<char> > opts_from_config;
    try {
       bpo::parsed_options parsed_opts_from_config = bpo::parse_config_file<char>(my->_config_file_name.make_preferred().string().c_str(), my->_cfg_options, false);
+      my->_parsed_options.reserve(my->_parsed_options.size() + parsed_opts_from_config.options.size());
+      my->_parsed_options.insert(my->_parsed_options.end(), parsed_opts_from_config.options.begin(), parsed_opts_from_config.options.end());
       bpo::store(parsed_opts_from_config, options);
       opts_from_config = parsed_opts_from_config.options;
    } catch( const boost::program_options::unknown_option& e ) {
@@ -589,7 +593,11 @@ void application_base::set_sighup_callback(std::function<void()> callback) {
 }
 
 const bpo::variables_map& application_base::get_options() const{
-      return my->_options;
+   return my->_options;
+}
+
+const std::vector<bpo::basic_option<char>>& application_base::get_parsed_options() const {
+   return my->_parsed_options;
 }
 
 } /// namespace appbase
