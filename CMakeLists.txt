@@ -21,7 +21,9 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 
-find_package(Boost 1.67 REQUIRED COMPONENTS program_options system)
+if(NOT TARGET Boost::program_options)
+   find_package(Boost 1.67 REQUIRED COMPONENTS program_options system)
+endif()
 
 if( APPLE )
   # Apple Specific Options Here
@@ -47,6 +49,11 @@ add_library( appbase
            )
 
 target_link_libraries( appbase PUBLIC Boost::program_options Boost::system Threads::Threads)
+
+if(TARGET Boost::asio)
+   target_link_libraries( appbase PUBLIC Boost::asio Boost::unit_test_framework Boost::signals2 )
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
     target_link_libraries( appbase PUBLIC stdc++fs )
