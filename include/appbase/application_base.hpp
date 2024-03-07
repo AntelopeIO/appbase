@@ -289,7 +289,10 @@ protected:
    }
    ///@}
 
-   application_base(); ///< protected because application is a singleton that should be accessed via instance()
+   application_base(std::shared_ptr<void>&& e); ///< protected because application is a singleton that should be accessed via instance()
+
+   /// !!! must be dtor'ed after plugins
+   std::shared_ptr<void> executor_ptr;
 
 private:
    // members are ordered taking into account that the last one is destructed first
@@ -368,7 +371,7 @@ public:
       application_base::startup(get_io_service());
    }
 
-   application_t() {
+   application_t() : application_base(std::make_shared<executor_t>()), executor_(*static_cast<executor_t*>(executor_ptr.get())) {
       set_stop_executor_cb([&]() { get_io_service().stop(); });
       set_post_cb([&](int prio, std::function<void()> cb) { executor_.post(prio, std::move(cb)); });
    }
@@ -379,7 +382,7 @@ public:
 
 private:
    inline static std::unique_ptr<application_t> app_instance;
-   executor_t executor_;
+   executor_t& executor_;
 };
 
 
