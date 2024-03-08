@@ -352,7 +352,7 @@ public:
     */
    template <typename Func>
    auto post(int priority, Func&& func) {
-      return executor_.post(priority, std::forward<Func>(func));
+      return get_executor().post(priority, std::forward<Func>(func));
    }
 
    /**
@@ -360,29 +360,32 @@ public:
     *  Should only be executed from one thread.
     */
    void exec() {
-      application_base::exec(executor_);
+      application_base::exec(get_executor());
    }
 
    boost::asio::io_service& get_io_service() {
-      return executor_.get_io_service();
+      return get_executor().get_io_service();
    }
 
    void startup() {
       application_base::startup(get_io_service());
    }
 
-   application_t() : application_base(std::make_shared<executor_t>()), executor_(*static_cast<executor_t*>(executor_ptr.get())) {
+   application_t() : application_base(std::make_shared<executor_t>()) {
       set_stop_executor_cb([&]() { get_io_service().stop(); });
-      set_post_cb([&](int prio, std::function<void()> cb) { executor_.post(prio, std::move(cb)); });
+      set_post_cb([&](int prio, std::function<void()> cb) { get_executor().post(prio, std::move(cb)); });
    }
 
    executor_t& executor() {
-      return executor_;
+      return get_executor();
    }
 
 private:
    inline static std::unique_ptr<application_t> app_instance;
-   executor_t& executor_;
+
+   executor_t& get_executor() const {
+      return *static_cast<executor_t*>(executor_ptr.get());
+   }
 };
 
 
