@@ -88,8 +88,8 @@ class application_impl {
       std::optional<boost::asio::io_context> _signal_catching_io_ctx;
 };
 
-application_base::application_base()
-:my(new application_impl()){
+application_base::application_base(std::shared_ptr<void>&& e) :
+ executor_ptr(std::move(e)), my(new application_impl()){
    register_config_type<std::string>();
    register_config_type<bool>();
    register_config_type<unsigned short>();
