@@ -402,8 +402,10 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
          {
             vector<string> names;
             boost::split(names, arg, boost::is_any_of(" \t,"));
-            for(const std::string& name : names)
+            for(const std::string& name : names) {
+               plugin_name = name;
                get_plugin(name).initialize(options);
+            }
          }
       }
 
