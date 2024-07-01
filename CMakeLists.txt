@@ -51,7 +51,7 @@ add_library( appbase
 target_link_libraries( appbase PUBLIC Boost::program_options Boost::system Threads::Threads)
 
 if(TARGET Boost::asio)
-   target_link_libraries( appbase PUBLIC Boost::asio Boost::unit_test_framework Boost::signals2 )
+   target_link_libraries( appbase PUBLIC Boost::asio Boost::signals2 )
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
