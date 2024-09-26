@@ -115,7 +115,6 @@ public:
    }
 
    void startup(boost::asio::io_service& io_serv);
-   void shutdown();
 
    /**
     *  Wait until quit(), SIGINT or SIGTERM and then shutdown.
@@ -126,15 +125,15 @@ public:
       std::exception_ptr eptr = nullptr;
       {
          auto& io_serv{exec.get_io_service()};
-         boost::asio::io_service::work work(io_serv);
+         std::optional<boost::asio::io_service::work> work(io_serv);
          (void)work;
          bool more = true;
 
          while (more || io_serv.run_one()) {
-            if (is_quiting())
-               break;
             try {
                io_serv.poll(); // queue up any ready; allowing high priority item to get into the queue
+               if (io_serv.stopped())
+                  break;
                // execute the highest priority item
                more = exec.execute_highest();
             } catch (...) {
@@ -146,8 +145,20 @@ public:
          }
 
          try {
-            exec.clear(); // make sure the queue is empty
             shutdown();   // may rethrow exceptions
+         } catch (...) {
+            if (!eptr)
+               eptr = std::current_exception();
+         }
+
+         // plugins shutdown down, drain io_context of anything posted while shutting down before destroying plugins
+         work.reset();
+         while (io_serv.poll())
+            ;
+
+         try {
+            plugins.clear();
+            exec.clear(); // make sure the queue is empty
          } catch (...) {
             if (!eptr)
                eptr = std::current_exception();
@@ -289,6 +300,8 @@ protected:
       running_plugins.push_back(plug);
    }
    ///@}
+
+   void shutdown();
 
    application_base(std::shared_ptr<void>&& e); ///< protected because application is a singleton that should be accessed via instance()
 

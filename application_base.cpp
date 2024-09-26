@@ -468,7 +468,6 @@ void application_base::shutdown() {
    try {
       running_plugins.clear();
       initialized_plugins.clear();
-      plugins.clear();
    } catch(...) {
       if (!eptr)
          eptr = std::current_exception();
