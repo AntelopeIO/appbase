@@ -125,7 +125,7 @@ public:
       std::exception_ptr eptr = nullptr;
       {
          auto& io_serv{exec.get_io_service()};
-         std::optional<boost::asio::io_service::work> work(io_serv);
+         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work = boost::asio::make_work_guard(io_serv);
          (void)work;
          bool more = true;
 
@@ -151,14 +151,15 @@ public:
                eptr = std::current_exception();
          }
 
-         // plugins shutdown down, drain io_context of anything posted while shutting down before destroying plugins
          work.reset();
+         io_serv.restart();
+         // plugins shutdown down, drain io_context of anything posted while shutting down before destroying plugins
          while (io_serv.poll())
             ;
 
          try {
-            plugins.clear();
             exec.clear(); // make sure the queue is empty
+            plugins.clear();
          } catch (...) {
             if (!eptr)
                eptr = std::current_exception();
