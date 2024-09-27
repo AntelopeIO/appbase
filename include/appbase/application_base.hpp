@@ -145,7 +145,7 @@ public:
          }
 
          try {
-            shutdown();   // may rethrow exceptions
+            shutdown_plugins();   // may rethrow exceptions
          } catch (...) {
             if (!eptr)
                eptr = std::current_exception();
@@ -159,7 +159,7 @@ public:
 
          try {
             exec.clear(); // make sure the queue is empty
-            plugins.clear();
+            destroy_plugins();
          } catch (...) {
             if (!eptr)
                eptr = std::current_exception();
@@ -302,7 +302,8 @@ protected:
    }
    ///@}
 
-   void shutdown();
+   void shutdown_plugins();
+   void destroy_plugins();
 
    application_base(std::shared_ptr<void>&& e); ///< protected because application is a singleton that should be accessed via instance()
 
