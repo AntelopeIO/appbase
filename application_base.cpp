@@ -185,7 +185,7 @@ void application_base::startup(boost::asio::io_service& io_serv) {
 
    } catch( ... ) {
       clean_up_signal_thread();
-      shutdown();
+      shutdown_plugins();
       throw;
    }
 
@@ -441,7 +441,7 @@ void application_base::handle_exception(std::exception_ptr eptr, std::string_vie
    }
 }
 
-void application_base::shutdown() {
+void application_base::shutdown_plugins() {
    std::exception_ptr eptr = nullptr;
 
    for(auto ritr = running_plugins.rbegin();
@@ -454,8 +454,17 @@ void application_base::shutdown() {
          handle_exception(std::current_exception(), (*ritr)->name());
       }
    }
-   for(auto ritr = running_plugins.rbegin();
-       ritr != running_plugins.rend(); ++ritr) {
+
+   // if we caught an exception while shutting down a plugin, rethrow it so that main()
+   // can catch it and report the error
+   if (eptr)
+      std::rethrow_exception(eptr);
+}
+
+void application_base::destroy_plugins() {
+   std::exception_ptr eptr = nullptr;
+
+   for(auto ritr = running_plugins.rbegin(); ritr != running_plugins.rend(); ++ritr) {
       try {
          plugins.erase((*ritr)->name());
       } catch(...) {
@@ -468,12 +477,12 @@ void application_base::shutdown() {
    try {
       running_plugins.clear();
       initialized_plugins.clear();
+      plugins.clear();
    } catch(...) {
       if (!eptr)
          eptr = std::current_exception();
       handle_exception(std::current_exception(), "plugin cleanup");
    }
-   quit();
 
    // if we caught an exception while shutting down a plugin, rethrow it so that main()
    // can catch it and report the error
