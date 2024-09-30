@@ -131,10 +131,10 @@ public:
          bool more = true;
 
          while (more || io_serv.run_one()) {
-            if (is_quiting())
-               break;
             try {
                io_serv.poll(); // queue up any ready; allowing high priority item to get into the queue
+               if (io_serv.stopped())
+                  break;
                // execute the highest priority item
                more = exec.execute_highest();
             } catch (...) {
