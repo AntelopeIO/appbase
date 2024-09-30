@@ -152,13 +152,13 @@ public:
          }
 
          work.reset();
-         io_serv.restart();
-         // plugins shutdown down, drain io_context of anything posted while shutting down before destroying plugins
-         while (io_serv.poll())
-            ;
 
          try {
+            // plugins shutdown down at this point,
             exec.clear(); // make sure the queue is empty
+            // Recreate the io_context since it doesn't provide a clear and we want the destructors of all the
+            // lambdas posted to the io_context to execute before destroying the plugins
+            exec.reset();
             destroy_plugins();
          } catch (...) {
             if (!eptr)
