@@ -3,6 +3,9 @@
 #include <appbase/application_base.hpp>
 #include <appbase/execution_priority_queue.hpp>
 
+#include <limits>
+#include <optional>
+
 namespace appbase {
 
 class default_executor {
