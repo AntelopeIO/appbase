@@ -18,6 +18,9 @@
 #include <appbase/application_base.hpp>
 #include <appbase/execution_priority_queue.hpp>
 
+#include <limits>
+#include <optional>
+
 class my_executor {
 public:
    template <typename Func>
