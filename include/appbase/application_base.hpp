@@ -144,6 +144,8 @@ public:
             }
          }
 
+         quit();
+
          try {
             shutdown_plugins();   // may rethrow exceptions
          } catch (...) {
