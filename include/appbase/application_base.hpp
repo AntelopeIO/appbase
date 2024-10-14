@@ -155,10 +155,17 @@ public:
 
          try {
             // plugins shutdown down at this point,
-            exec.clear(); // make sure the queue is empty
-            // Recreate the io_context since it doesn't provide a clear and we want the destructors of all the
-            // lambdas posted to the io_context to execute before destroying the plugins
-            exec.reset();
+
+            // Drain the io_service of anything that could be referencing plugins.
+            // Note this does not call exec.execute_highest(), so only drains into the priority queue assuming nothing
+            // has hijacked the io_service for other purposes.
+            io_serv.restart();
+            while (io_serv.poll())
+               ;
+            // clear priority queue of anything pushed by poll()
+            exec.clear();
+
+            // destroy the plugins now that all lambda that reference them have been destroyed
             destroy_plugins();
          } catch (...) {
             if (!eptr)
