@@ -397,6 +397,22 @@ public:
       return executor().get_io_service();
    }
 
+   /**
+    * Create a timer with the main application io_context. Timer async_wait will execute on the main thread.
+    *
+    * Use with app().executor().wrap(priority::x, exec_queue::x, [](const boost::system::error_code& ec).
+    * For example:
+    *   _timer.async_wait(app().executor().wrap(priority::high, exec_queue::read_write,
+    *                                           [](const boost::system::error_code& ec) {
+    *                                              if (!ec)
+    *                                                 // do something
+    *                                           }));
+    */
+   template<typename Timer>
+   auto make_timer() {
+      return Timer{get_io_service()};
+   }
+
    void startup() {
       application_base::startup(get_io_service());
    }
