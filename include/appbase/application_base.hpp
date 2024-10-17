@@ -342,7 +342,7 @@ private:
    void print_default_config(std::ostream& os);
 
    void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
-   void setup_signal_handling_on_ios(boost::asio::io_context& io_ctx, bool startup);
+   void setup_signal_handling_on_ioc(boost::asio::io_context& io_ctx, bool startup);
 
    void handle_exception(std::exception_ptr eptr, std::string_view origin);
 };

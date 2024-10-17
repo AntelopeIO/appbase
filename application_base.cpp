@@ -152,7 +152,7 @@ void application_base::wait_for_signal(std::shared_ptr<boost::asio::signal_set> 
    });
 }
 
-void application_base::setup_signal_handling_on_ios(boost::asio::io_context& io_ctx, bool startup) {
+void application_base::setup_signal_handling_on_ioc(boost::asio::io_context& io_ctx, bool startup) {
    std::shared_ptr<boost::asio::signal_set> ss = std::make_shared<boost::asio::signal_set>(io_ctx, SIGINT, SIGTERM);
 #ifdef SIGPIPE
    ss->add(SIGPIPE);
@@ -168,7 +168,7 @@ void application_base::setup_signal_handling_on_ios(boost::asio::io_context& io_
 void application_base::startup(boost::asio::io_context& io_ctx) {
    //during startup, run a second thread to catch SIGINT/SIGTERM/SIGPIPE/SIGHUP
    boost::asio::io_context startup_thread_io_ctx;
-   setup_signal_handling_on_ios(startup_thread_io_ctx, true);
+   setup_signal_handling_on_ioc(startup_thread_io_ctx, true);
    std::thread startup_thread([&startup_thread_io_ctx]() {
       startup_thread_io_ctx.run();
    });
@@ -191,7 +191,7 @@ void application_base::startup(boost::asio::io_context& io_ctx) {
 
    //after startup, shut down the signal handling thread and catch the signals back on main io_context
    clean_up_signal_thread();
-   setup_signal_handling_on_ios(io_ctx, false);
+   setup_signal_handling_on_ioc(io_ctx, false);
 
 #ifdef SIGHUP
    std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(io_ctx, SIGHUP));
