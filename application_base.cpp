@@ -152,8 +152,8 @@ void application_base::wait_for_signal(std::shared_ptr<boost::asio::signal_set> 
    });
 }
 
-void application_base::setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup) {
-   std::shared_ptr<boost::asio::signal_set> ss = std::make_shared<boost::asio::signal_set>(ios, SIGINT, SIGTERM);
+void application_base::setup_signal_handling_on_ios(boost::asio::io_context& io_ctx, bool startup) {
+   std::shared_ptr<boost::asio::signal_set> ss = std::make_shared<boost::asio::signal_set>(io_ctx, SIGINT, SIGTERM);
 #ifdef SIGPIPE
    ss->add(SIGPIPE);
 #endif
@@ -165,15 +165,15 @@ void application_base::setup_signal_handling_on_ios(boost::asio::io_service& ios
    wait_for_signal(ss);
 }
 
-void application_base::startup(boost::asio::io_service& io_serv) {
+void application_base::startup(boost::asio::io_context& io_ctx) {
    //during startup, run a second thread to catch SIGINT/SIGTERM/SIGPIPE/SIGHUP
-   boost::asio::io_service startup_thread_ios;
-   setup_signal_handling_on_ios(startup_thread_ios, true);
-   std::thread startup_thread([&startup_thread_ios]() {
-      startup_thread_ios.run();
+   boost::asio::io_context startup_thread_io_ctx;
+   setup_signal_handling_on_ios(startup_thread_io_ctx, true);
+   std::thread startup_thread([&startup_thread_io_ctx]() {
+      startup_thread_io_ctx.run();
    });
-   auto clean_up_signal_thread = [&startup_thread_ios, &startup_thread]() {
-      startup_thread_ios.stop();
+   auto clean_up_signal_thread = [&startup_thread_io_ctx, &startup_thread]() {
+      startup_thread_io_ctx.stop();
       startup_thread.join();
    };
 
@@ -189,12 +189,12 @@ void application_base::startup(boost::asio::io_service& io_serv) {
       throw;
    }
 
-   //after startup, shut down the signal handling thread and catch the signals back on main io_service
+   //after startup, shut down the signal handling thread and catch the signals back on main io_context
    clean_up_signal_thread();
-   setup_signal_handling_on_ios(io_serv, false);
+   setup_signal_handling_on_ios(io_ctx, false);
 
 #ifdef SIGHUP
-   std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(io_serv, SIGHUP));
+   std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(io_ctx, SIGHUP));
    start_sighup_handler( sighup_set );
 #endif
 }

@@ -26,7 +26,7 @@ class thready_plugin : public appbase::plugin<thready_plugin> {
      void thread_work() {
         boost::asio::post(ctx, [&]() {
            thing_better_be_alive better_be;
-           boost::asio::post(appbase::app().get_io_service(), [&,is_it=std::move(better_be)]() {
+           boost::asio::post(appbase::app().get_io_context(), [&,is_it=std::move(better_be)]() {
 	      thread_work();
 	   });
 	});
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(test_shutdown)
    if( !app->initialize<thready_plugin>( 1, const_cast<char**>(argv) ) )
       return;
    app->startup();
-   boost::asio::post(appbase::app().get_io_service(), [&](){
+   boost::asio::post(appbase::app().get_io_context(), [&](){
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
       app->quit();
    });
