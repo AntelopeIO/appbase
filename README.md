@@ -94,9 +94,9 @@ Plugins can be registered by calling `appbase::application::register_plugin()`. 
 ### Boost ASIO 
 
 AppBase maintains a singleton `application` instance which can be accessed via `appbase::app()`.  This 
-application owns a `boost::asio::io_service` which starts running when `appbase::exec()` is called. If 
+application owns a `boost::asio::io_context` which starts running when `appbase::exec()` is called. If 
 a plugin needs to perform IO or other asynchronous operations then it should dispatch it via `application`
-`io_service` which is setup to use an execution priority queue.
+`io_context` which is setup to use an execution priority queue.
 ```
 app().post( appbase::priority::low, lambda )
 ```
@@ -104,10 +104,10 @@ OR
 ```
 delay_timer->async_wait( app().get_priority_queue().wrap( priority::low, lambda ) );
 ```
-Use of `get_io_service()` directly is not recommended as the priority queue will not be respected. 
+Use of `get_io_context()` directly is not recommended as the priority queue will not be respected. 
 
-Because the app calls `io_service::run()` from within `application::exec()` and does not spawn any threads
-all asynchronous operations posted to the io_service should be run in the same thread.  
+Because the app calls `io_context::run()` from within `application::exec()` and does not spawn any threads
+all asynchronous operations posted to the io_context should be run in the same thread.  
 
 ## Graceful Exit 
 
