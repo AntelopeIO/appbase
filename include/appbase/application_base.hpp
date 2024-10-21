@@ -114,8 +114,7 @@ public:
       return initialize_impl(argc, argv, {find_plugin<Plugin>()...}, initialize_logging);
    }
 
-   void startup(boost::asio::io_service& io_serv);
-   void shutdown();
+   void startup(boost::asio::io_context& io_ctx);
 
    /**
     *  Wait until quit(), SIGINT or SIGTERM and then shutdown.
@@ -125,29 +124,51 @@ public:
    void exec(Executor& exec) {
       std::exception_ptr eptr = nullptr;
       {
-         auto& io_serv{exec.get_io_service()};
-         boost::asio::io_service::work work(io_serv);
+         auto& io_ctx{exec.get_io_context()};
+         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work = boost::asio::make_work_guard(io_ctx);
          (void)work;
          bool more = true;
 
-         while (more || io_serv.run_one()) {
-            if (is_quiting())
-               break;
+         while (more || io_ctx.run_one()) {
             try {
-               io_serv.poll(); // queue up any ready; allowing high priority item to get into the queue
+               io_ctx.poll(); // queue up any ready; allowing high priority item to get into the queue
+               if (io_ctx.stopped())
+                  break;
                // execute the highest priority item
                more = exec.execute_highest();
             } catch (...) {
-               more = true; // so we exit the while loop without calling io_serv.run_one()
+               more = true; // so we exit the while loop without calling io_ctx.run_one()
                quit();
                eptr = std::current_exception();
                handle_exception(eptr, "application loop");
             }
          }
 
+         quit();
+
          try {
-            exec.clear(); // make sure the queue is empty
-            shutdown();   // may rethrow exceptions
+            shutdown_plugins();   // may rethrow exceptions
+         } catch (...) {
+            if (!eptr)
+               eptr = std::current_exception();
+         }
+
+         work.reset();
+
+         try {
+            // plugins shutdown down at this point,
+
+            // Drain the io_context of anything that could be referencing plugins.
+            // Note this does not call exec.execute_highest(), so only drains into the priority queue assuming nothing
+            // has hijacked the io_context for other purposes.
+            io_ctx.restart();
+            while (io_ctx.poll())
+               ;
+            // clear priority queue of anything pushed by poll()
+            exec.clear();
+
+            // destroy the plugins now that all lambda that reference them have been destroyed
+            destroy_plugins();
          } catch (...) {
             if (!eptr)
                eptr = std::current_exception();
@@ -290,6 +311,9 @@ protected:
    }
    ///@}
 
+   void shutdown_plugins();
+   void destroy_plugins();
+
    application_base(std::shared_ptr<void>&& e); ///< protected because application is a singleton that should be accessed via instance()
 
    /// !!! must be dtor'ed after plugins
@@ -318,7 +342,7 @@ private:
    void print_default_config(std::ostream& os);
 
    void wait_for_signal(std::shared_ptr<boost::asio::signal_set> ss);
-   void setup_signal_handling_on_ios(boost::asio::io_service& ios, bool startup);
+   void setup_signal_handling_on_ioc(boost::asio::io_context& io_ctx, bool startup);
 
    void handle_exception(std::exception_ptr eptr, std::string_view origin);
 };
@@ -343,12 +367,12 @@ public:
    }
 
    /**
-    * Post func to run on io_service with given priority.
+    * Post func to run on io_context with given priority.
     *
     * -- deprecated: use app().executor().post()
     *
     * @param priority can be appbase::priority::* constants or any int, larger ints run first
-    * @param func function to run on io_service
+    * @param func function to run on io_context
     * @return result of boost::asio::post
     */
    template <typename Func>
@@ -365,20 +389,36 @@ public:
    }
 
    /**
-    * Anything posted directly on this io_service is run at the highest of priority as it by-passes the
+    * Anything posted directly on this io_context is run at the highest of priority as it by-passes the
     * priority queue and is run immediately in exec(). Use with care and consider using app().executor().post() instead.
     * @return
     */
-   boost::asio::io_service& get_io_service() {
-      return executor().get_io_service();
+   boost::asio::io_context& get_io_context() {
+      return executor().get_io_context();
+   }
+
+   /**
+    * Create a timer with the main application io_context. Timer async_wait will execute on the main thread.
+    *
+    * Use with app().executor().wrap(priority::x, exec_queue::x, [](const boost::system::error_code& ec).
+    * For example:
+    *   _timer.async_wait(app().executor().wrap(priority::high, exec_queue::read_write,
+    *                                           [](const boost::system::error_code& ec) {
+    *                                              if (!ec)
+    *                                                 // do something
+    *                                           }));
+    */
+   template<typename Timer>
+   auto make_timer() {
+      return Timer{get_io_context()};
    }
 
    void startup() {
-      application_base::startup(get_io_service());
+      application_base::startup(get_io_context());
    }
 
    application_t() : application_base(std::make_shared<executor_t>()) {
-      set_stop_executor_cb([&]() { get_io_service().stop(); });
+      set_stop_executor_cb([&]() { get_io_context().stop(); });
       set_post_cb([&](int prio, std::function<void()> cb) { executor().post(prio, std::move(cb)); });
    }
 
