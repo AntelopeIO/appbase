@@ -33,8 +33,7 @@ class application_impl {
       application_impl():_app_options("Application Options"){
          // Create a separate thread to handle signals, so that they don't interrupt I/O.
          // stdio does not recover from EINTR.
-         _signal_catching_io_ctx.emplace();
-         _signal_catching_thread = std::thread([&ioctx = *_signal_catching_io_ctx]() {
+         _signal_catching_thread = std::thread([&ioctx = _signal_catching_io_ctx]() {
             auto workwork = boost::asio::make_work_guard(ioctx);
             ioctx.run();
          });
@@ -55,7 +54,7 @@ class application_impl {
 
       ~application_impl() {
          if(_signal_catching_thread.joinable()) {
-            _signal_catching_io_ctx->stop();
+            _signal_catching_io_ctx.stop();
             _signal_catching_thread.join();
          }
 
@@ -85,7 +84,7 @@ class application_impl {
       any_type_compare_map    _any_compare_map;
 
       std::thread             _signal_catching_thread;
-      std::optional<boost::asio::io_context> _signal_catching_io_ctx;
+      boost::asio::io_context _signal_catching_io_ctx;
 };
 
 application_base::application_base(std::shared_ptr<void>&& e) :
@@ -152,30 +151,23 @@ void application_base::wait_for_signal(std::shared_ptr<boost::asio::signal_set> 
    });
 }
 
-void application_base::setup_signal_handling_on_ioc(boost::asio::io_context& io_ctx, bool startup) {
+std::shared_ptr<boost::asio::signal_set> application_base::setup_signal_handling_on_ioc(boost::asio::io_context& io_ctx, bool include_sighup) {
    std::shared_ptr<boost::asio::signal_set> ss = std::make_shared<boost::asio::signal_set>(io_ctx, SIGINT, SIGTERM);
 #ifdef SIGPIPE
    ss->add(SIGPIPE);
 #endif
 #ifdef SIGHUP
-   if( startup ) {
+   if( include_sighup ) {
       ss->add(SIGHUP);
    }
 #endif
    wait_for_signal(ss);
+   return ss;
 }
 
 void application_base::startup(boost::asio::io_context& io_ctx) {
-   //during startup, run a second thread to catch SIGINT/SIGTERM/SIGPIPE/SIGHUP
-   boost::asio::io_context startup_thread_io_ctx;
-   setup_signal_handling_on_ioc(startup_thread_io_ctx, true);
-   std::thread startup_thread([&startup_thread_io_ctx]() {
-      startup_thread_io_ctx.run();
-   });
-   auto clean_up_signal_thread = [&startup_thread_io_ctx, &startup_thread]() {
-      startup_thread_io_ctx.stop();
-      startup_thread.join();
-   };
+   // setup handling of SIGINT/SIGTERM/SIGPIPE/SIGHUP during startup
+   auto ss = setup_signal_handling_on_ioc(my->_signal_catching_io_ctx, true);
 
    try {
       for( auto plugin : initialized_plugins ) {
@@ -184,14 +176,14 @@ void application_base::startup(boost::asio::io_context& io_ctx) {
       }
 
    } catch( ... ) {
-      clean_up_signal_thread();
       shutdown_plugins();
       throw;
    }
 
-   //after startup, shut down the signal handling thread and catch the signals back on main io_context
-   clean_up_signal_thread();
-   setup_signal_handling_on_ioc(io_ctx, false);
+   //after startup, move SIGHUP handling to main thread
+   boost::system::error_code ec;
+   ss->cancel(ec);
+   setup_signal_handling_on_ioc(my->_signal_catching_io_ctx, false);
 
 #ifdef SIGHUP
    std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(io_ctx, SIGHUP));
