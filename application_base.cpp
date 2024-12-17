@@ -483,8 +483,9 @@ void application_base::destroy_plugins() {
 }
 
 void application_base::quit() {
-   my->_is_quiting = true;
-   stop_executor_cb();
+   const bool already_quitting = my->_is_quiting.exchange(true);
+   if (!already_quitting)
+      stop_executor_cb();
 }
 
 bool application_base::is_quiting() const {
