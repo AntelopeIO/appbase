@@ -1,5 +1,5 @@
 # Defines AppBase library target.
-cmake_minimum_required( VERSION 3.5 )
+cmake_minimum_required( VERSION 3.8...3.31 )
 project( AppBase )
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
