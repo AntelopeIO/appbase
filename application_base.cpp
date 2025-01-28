@@ -151,24 +151,16 @@ void application_base::wait_for_signal(std::shared_ptr<boost::asio::signal_set> 
    });
 }
 
-std::shared_ptr<boost::asio::signal_set> application_base::setup_signal_handling_on_ioc(boost::asio::io_context& io_ctx, bool include_sighup) {
+std::shared_ptr<boost::asio::signal_set> application_base::setup_signal_handling_on_ioc(boost::asio::io_context& io_ctx) {
    std::shared_ptr<boost::asio::signal_set> ss = std::make_shared<boost::asio::signal_set>(io_ctx, SIGINT, SIGTERM);
 #ifdef SIGPIPE
    ss->add(SIGPIPE);
-#endif
-#ifdef SIGHUP
-   if( include_sighup ) {
-      ss->add(SIGHUP);
-   }
 #endif
    wait_for_signal(ss);
    return ss;
 }
 
 void application_base::startup(boost::asio::io_context& io_ctx) {
-   // setup handling of SIGINT/SIGTERM/SIGPIPE/SIGHUP during startup
-   auto ss = setup_signal_handling_on_ioc(my->_signal_catching_io_ctx, true);
-
    try {
       for( auto plugin : initialized_plugins ) {
          if( is_quiting() ) break;
@@ -179,11 +171,6 @@ void application_base::startup(boost::asio::io_context& io_ctx) {
       shutdown_plugins();
       throw;
    }
-
-   //after startup, move SIGHUP handling to main thread
-   boost::system::error_code ec;
-   ss->cancel(ec);
-   setup_signal_handling_on_ioc(my->_signal_catching_io_ctx, false);
 
 #ifdef SIGHUP
    std::shared_ptr<boost::asio::signal_set> sighup_set(new boost::asio::signal_set(io_ctx, SIGHUP));
@@ -385,6 +372,9 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
 
    std::string plugin_name;
    auto error_header = [&]() { return std::string("appbase: exception thrown during plugin \"") + plugin_name + "\" initialization.\n"; };
+
+   // setup handling of SIGINT/SIGTERM/SIGPIPE during initialize
+   auto ss = setup_signal_handling_on_ioc(my->_signal_catching_io_ctx);
 
    try {
       if(options.count("plugin") > 0)
