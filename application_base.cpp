@@ -373,7 +373,7 @@ bool application_base::initialize_impl(int argc, char** argv, vector<abstract_pl
    std::string plugin_name;
    auto error_header = [&]() { return std::string("appbase: exception thrown during plugin \"") + plugin_name + "\" initialization.\n"; };
 
-   // setup handling of SIGINT/SIGTERM/SIGPIPE/SIGHUP during initialize
+   // setup handling of SIGINT/SIGTERM/SIGPIPE during initialize
    auto ss = setup_signal_handling_on_ioc(my->_signal_catching_io_ctx);
 
    try {
